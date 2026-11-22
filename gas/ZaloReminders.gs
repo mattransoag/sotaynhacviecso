@@ -15,7 +15,7 @@
  */
 var ZR_CONFIG = {
   tz: 'Asia/Ho_Chi_Minh',
-  site: 'https://script.google.com/macros/s/AKfycbw93F_saU8Vw6Wd-Lg9qOYv_THGK1p8YNilJU8M933OuOP9QavproWmTMtAjMYOg7KRmA/exec',
+  site: 'https://script.google.com/macros/s/AKfycbyG7h14b6gJJYL_8n3O9c6jhQj5NeRDlMesLLBO8HA3YecLUpfsdLKGjop1sruoWdAh/exec',
   beforeMinutes: 60,
   overdueHours: 24
 };
@@ -37,13 +37,39 @@ function zrRequest_(method, body) {
   }
   return result.result;
 }
-/** Chạy sau khi nhắn một tin vào Bot; chỉ xem chat_id qua Execution log. */
+/** Kiểm tra token trước khi lấy chat ID. */
+function zrTestBotToken() {
+  var info = zrRequest_('getMe', {});
+  Logger.log('Kết nối bot thành công: ' + JSON.stringify(info));
+}
+/** Kiểm tra trạng thái webhook (không xóa webhook). */
+function zrCheckWebhook() {
+  var info = zrRequest_('getWebhookInfo', {});
+  Logger.log('Webhook: ' + JSON.stringify(info));
+}
+/** Gửi lời chào mới cho bot rồi chạy hàm này ngay. */
 function zrDiscoverChatId() {
-  var data = zrRequest_('getUpdates', { limit: 20, timeout: 0 });
-  (Array.isArray(data) ? data : []).forEach(function (update) {
-    var msg = update.message || update.edited_message;
-    if (msg && msg.chat && msg.chat.id) Logger.log('chat_id=' + msg.chat.id + ' text=' + String(msg.text || '').slice(0, 80));
+  var data;
+  try {
+    data = zrRequest_('getUpdates', { timeout: '1' });
+  } catch (err) {
+    if (String(err.message).indexOf('Request timeout') !== -1) {
+      Logger.log('Zalo chưa trả bản cập nhật trong thời gian chờ. Hãy nhắn tin mới cho bot rồi chạy lại. Kiểm tra zrCheckWebhook nếu vẫn gặp lỗi.');
+      return;
+    }
+    throw err;
+  }
+  // Zalo Bot API thường trả về một update; đồng thời hỗ trợ dạng mảng.
+  var updates = Array.isArray(data) ? data : (data ? [data] : []);
+  var found = 0;
+  updates.forEach(function (update) {
+    var msg = (update && (update.message || update.edited_message)) || null;
+    if (msg && msg.chat && msg.chat.id != null) {
+      Logger.log('ZALO_CHAT_ID=' + String(msg.chat.id));
+      found++;
+    }
   });
+  if (!found) Logger.log('Chưa thấy chat_id. Hãy nhắn một tin mới tới bot và chạy lại zrDiscoverChatId. Nếu đã bật webhook, getUpdates có thể không nhận tin.');
 }
 /** Chạy thủ công để kiểm tra token và chat_id. */
 function zrSendTest() {
