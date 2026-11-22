@@ -1,58 +1,60 @@
-# SỔ TAY NHẮC VIỆC SỐ — Zalo Bot + Google Apps Script
+# SỔ TAY NHẮC VIỆC SỐ
+**Zalo Bot + Google Apps Script · Không sử dụng AI**
 
-Hệ thống nhắc công việc từ Google Sheets qua tài khoản **Zalo Bot** chính thức, **không sử dụng AI**.
+Đây là repository mã nguồn dành cho Dashboard quản trị và mô-đun nhắc việc tự động qua Zalo Bot. GitHub lưu trữ mã nguồn; **Google Apps Script** là nơi thực thi gửi tin và đọc công việc.
 
-- Mã tích hợp: [gas/ZaloReminders.gs](gas/ZaloReminders.gs)
-- Phần mềm nguồn (GAS đã triển khai): https://script.google.com/macros/s/AKfycbw93F_saU8Vw6Wd-Lg9qOYv_THGK1p8YNilJU8M933OuOP9QavproWmTMtAjMYOg7KRmA/exec
+## Trạng thái triển khai (22/11/2026)
 
-## Trạng thái
+- ✅ Mã nguồn đã lưu trong nhánh `main` của GitHub.
+- ✅ Dashboard GAS đã hiển thị, theo ảnh người dùng cung cấp.
+- ✅ Phương thức `getMe` xác thực Bot Token thành công.
+- ✅ Dashboard đã đọc được Chat ID từ một cuộc trò chuyện Zalo cá nhân.
+- ⚠️ Cần xác nhận `ZALO_CHAT_ID` **đã lưu** trong Script Properties và **tin nhắn thử đã thực sự được nhận**. Không lưu giá trị bí mật vào repository.
+- ⏳ Chưa kiểm chứng cấu trúc Google Sheets chứa công việc, chưa xác nhận trigger nhắc việc được bật.
+- ⏳ GitHub không tự đẩy mã vào GAS và không chạy lịch nhắc việc.
 
-✅ Đã đưa module nhắc việc lên GitHub.  
-⏳ Chưa cài module vào dự án GAS thực tế, chưa xác minh cấu trúc dữ liệu Sheet, chưa có token và chat_id; vì vậy **chưa gửi được nhắc việc thật**.
+## Mã nguồn
 
-Không sửa `doGet`, `doPost`, giao diện hay dữ liệu hiện có.
+| Tệp | Vai trò |
+|---|---|
+| [gas/ZaloReminders.gs](gas/ZaloReminders.gs) | Đọc công việc từ Google Sheets, gửi Zalo Bot, chống gửi trùng, cài lịch 15 phút |
+| [dashboard/Dashboard.gs](dashboard/Dashboard.gs) | Xử lý Dashboard phía GAS, quản lý Chat ID và kiểm tra kết nối |
+| [dashboard/DashboardUI.html](dashboard/DashboardUI.html) | Giao diện Dashboard quản trị tiếng Việt |
+| [dashboard/README.md](dashboard/README.md) | Hướng dẫn cài Dashboard |
 
-## Thiết lập nhanh
+**Không dùng** `dashboard/Dashboard.html` cũ: tên gốc trùng với `Dashboard.gs` trong Apps Script. Hãy dùng tệp **DashboardUI.html**.
 
-1. Mở phần mềm nguồn bằng trình chỉnh sửa **Google Apps Script** (cần quyền chỉnh sửa dự án, không phải chỉ URL `/exec`).
-2. Thêm tệp Script mới tên `ZaloReminders`. Sao chép nội dung từ `gas/ZaloReminders.gs` vào đó. KHÔNG xóa tệp cũ.
-3. Trong **Project Settings → Script Properties**, thêm:
-   - `ZALO_BOT_TOKEN`: token lấy từ Zalo Bot Manager (giữ bí mật).
-   - `TASK_SHEET_NAME`: tên tab Sheet đang lưu công việc.
-   - `SPREADSHEET_ID`: ID Google Spreadsheet nếu dự án GAS không gắn với Sheet.
-   - `TASK_HEADER_ID`, `TASK_HEADER_TITLE`, `TASK_HEADER_DUE`, `TASK_HEADER_STATUS`: tên các cột tương ứng. Mặc định: `ID`, `Công việc`, `Hạn hoàn thành`, `Trạng thái`.
-4. Vào cuộc trò chuyện với bot vừa tạo bằng tài khoản Zalo muốn nhận tin, gửi chữ **chào**.
-5. Trong GAS chọn chạy `zrDiscoverChatId` rồi mở **Executions / Execution log** để xem `chat_id`. Nếu bot đã đăng ký webhook, `getUpdates` có thể không hoạt động; cần chọn một cơ chế nhận tin và không tùy ý xóa webhook đang sử dụng.
-6. Thêm `ZALO_CHAT_ID` trong Script Properties với `chat_id` đã tìm được.
-7. Chạy `zrSendTest`; xác nhận tin thử đã đến Zalo.
-8. Chạy `zrCheckReminders` một lần để kiểm tra Sheet và cách đọc dữ liệu; kiểm tra Executions. Khi mọi thứ đúng, chạy `zrInstallTrigger` một lần để quét 15 phút/lần.
+## Hoàn tất đưa vào vận hành
 
-**Không đăng token lên GitHub, không gửi token trong tin nhắn hoặc chụp màn hình chia sẻ công khai.** Hãy chỉ nhập token vào Script Properties.
+1. Trong GAS, bảo đảm có ba tệp `ZaloReminders.gs`, `Dashboard.gs`, `DashboardUI.html` và tên HTML được gọi trong `Dashboard.gs` là `DashboardUI`.
+2. Giữ duy nhất một hàm `doGet(e)`. Nếu dự án có giao diện ứng dụng khác, tích hợp nhánh `page=dashboard` vào hàm cũ; không ghi đè logic ứng dụng chính.
+3. Trong Script Properties, lưu `ZALO_BOT_TOKEN`, `ZR_ADMIN_EMAIL`, `ZALO_CHAT_ID`. **Không commit, sao chép hoặc chia sẻ Bot Token công khai.**
+4. Vào Dashboard kiểm tra ô **Chat ID đã lưu** có giá trị, chạy **Gửi tin nhắn thử** và xác nhận tin xuất hiện trên điện thoại.
+5. Bấm **Đọc danh sách công việc** để xác nhận đúng dữ liệu và trạng thái. Nếu báo lỗi, xác minh `SPREADSHEET_ID`, `TASK_SHEET_NAME` và tên các cột `TASK_HEADER_ID`, `TASK_HEADER_TITLE`, `TASK_HEADER_DUE`, `TASK_HEADER_STATUS`.
+6. **Chỉ sau khi nguồn dữ liệu đúng và tin nhắn thử thành công**, chạy `zrCheckReminders` có giám sát, rồi chạy `zrInstallTrigger` một lần trong trình chỉnh sửa Apps Script.
+7. Kiểm tra **Triggers** và **Executions** trong Apps Script để xác nhận lịch chạy 15 phút, xử lý lỗi kịp thời.
 
-## Dữ liệu cần có
-
-Module đọc dòng đầu làm tiêu đề, và yêu cầu ít nhất 4 trường:
+## Định dạng bảng mặc định
 
 | ID | Công việc | Hạn hoàn thành | Trạng thái |
 |---|---|---|---|
-| CV001 | Nộp báo cáo | 25/11/2026 16:30 | Chưa hoàn thành |
-| CV002 | Họp tổ | 26/11/2026 08:00 | Hoàn thành |
+| CV001 | Chuẩn bị báo cáo | 25/11/2026 16:30 | Chưa hoàn thành |
+| CV002 | Hoàn tất biên bản | 26/11/2026 08:00 | Hoàn thành |
 
-Nếu phần mềm thực tế có cột, cấu trúc hay cách lưu khác, cần **điều chỉnh mapping trên phiên bản đã kiểm tra**, không tự tạo bảng mới đè lên bảng hiện có. Cần xác định công việc của người nhận trước khi triển khai nhiều người.
+Đây chỉ là **dữ liệu mẫu**, không phải dữ liệu đọc từ phần mềm hiện có. Nếu bảng thực tế dùng cột khác thì đổi mapping, không tạo sheet mới ghi đè dữ liệu.
 
-## Cơ chế
+## Quy tắc nhắc việc
 
-- Mỗi lần trigger chạy, đọc dữ liệu nguồn.
-- Gửi tin công việc chưa hoàn thành khi còn từ 0–60 phút trước hạn.
-- Gửi cảnh báo quá hạn trong 24 giờ đầu sau hạn.
-- Dùng Script Properties ghi khóa đã gửi theo ID, hạn và loại nhắc. Nếu lỗi gửi, chưa ghi khóa.
-- Chỉ gửi đến một `ZALO_CHAT_ID` được chỉ định. Nếu nhiều người cần nhận, phải bổ sung ánh xạ người phụ trách/nhóm và quy tắc phân quyền.
+- Kiểm tra 15 phút/lần theo trigger GAS.
+- Nhắc khi còn tối đa 60 phút trước hạn.
+- Cảnh báo công việc quá hạn trong 24 giờ đầu.
+- Bỏ qua công việc đã hoàn thành, tránh gửi lặp một ID + thời hạn + giai đoạn nhắc.
+- Hiện chỉ hỗ trợ một Chat ID nhận thông báo. Phải kiểm tra quyền truy cập dữ liệu trước khi mở rộng nhiều người dùng.
 
-## Các lưu ý kỹ thuật
+## Bảo mật và giới hạn
 
-- Trigger GAS 15 phút/lần có thể chạy lệch thời điểm; không đảm bảo nhắc đúng giây.
-- Công việc có hạn rất xa trong quá khứ không được nhắc lại.
-- Dữ liệu ngày tháng nên là ô ngày giờ thực của Google Sheets; nếu là chữ, hỗ trợ `dd/MM/yyyy HH:mm` hoặc ISO.
-- Chống trùng bằng Script Properties có giới hạn lưu trữ, bản đầu dành cho quy mô nhỏ. Với nhiều nhiệm vụ cần thêm sheet `LichSuGui` hoặc CSDL.
-- Không sử dụng phần mềm này để gửi tin không mong muốn hay thông tin nhạy cảm đến người không đăng ký nhận tin.
-- Zalo Bot API có chính sách và hạn chế riêng; xem tài liệu chính thức: https://docs.zaloplatforms.com/zalo-bot
+- Repository nên giữ **Private**. Dashboard GAS đặt truy cập **Chỉ mình tôi** và `ZR_ADMIN_EMAIL` theo tài khoản quản trị.
+- Token chỉ lưu ở Apps Script → Project Settings → Script Properties.
+- Chống trùng hiện sử dụng Script Properties; khi số lượng công việc lớn cần cơ sở dữ liệu/bảng lịch sử và cơ chế dọn dẹp.
+- Bản nhắc việc hiện phụ thuộc Google Sheets. Nếu ứng dụng sử dụng nguồn lưu trữ khác, phải tích hợp đúng nguồn dữ liệu, chưa thể xác nhận chỉ từ URL `/exec`.
+- Không triển khai Dashboard quản trị trực tiếp trên GitHub Pages vì trang tĩnh không thể tự bảo vệ các lệnh GAS và token.
