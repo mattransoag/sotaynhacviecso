@@ -31,7 +31,17 @@
   function queueChange(action, task) {
     if(!task || !task.id) return;
     // Idempotent upsert/delete by stable client task ID.
-    queue.push({action, task: {...task}, id: String(task.id)});
+    const payload = {...task};
+    if(action === 'upsert') {
+      const instant = new Date(payload.due);
+      if(!Number.isFinite(instant.getTime())) {
+        setStatus('Hạn hoàn thành không hợp lệ, chưa thể đồng bộ.', 'error');
+        return;
+      }
+      // Date từ datetime-local phải chuyển sang ISO để GAS không đọc sai múi giờ.
+      payload.due = instant.toISOString();
+    }
+    queue.push({action, task: payload, id: String(task.id)});
     if (queue.length > 500) {
       queue = queue.slice(-500);
       setStatus('Hàng đợi quá dài; cần sao lưu và kiểm tra dữ liệu.', 'warn');
