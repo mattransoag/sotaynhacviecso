@@ -69,13 +69,16 @@ function zrReply_(id,ok,message){
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 function doPost(e){
-  var req='',action='',taskId='';
+  var req='',action='',taskId='',stage='CONFIG';
   try{
     // Không ghi log request, khóa hoặc nội dung công việc.
     var cfg=zrIngressReady_();
+    stage='REQUEST';
     if(!e||!e.parameter)throw new Error('Yêu cầu thiếu dữ liệu');
     req=String(e.parameter.request_id||'').slice(0,90);
+    stage='GOOGLE_AUTH';
     zrVerifyGoogleIdentity_(e.parameter.credential,cfg);
+    stage='VALIDATION';
     var raw=String(e.parameter.task_json||'');
     if(raw.length>12000)throw new Error('Dữ liệu quá lớn');
     var task=JSON.parse(raw);
@@ -84,9 +87,11 @@ function doPost(e){
     if(!/^[A-Za-z0-9_-]{8,100}$/.test(taskId))throw new Error('Mã công việc không hợp lệ');
     action=String(e.parameter.action||'upsert');
     if(['upsert','delete'].indexOf(action)<0)throw new Error('Thao tác không hợp lệ');
+    stage='LOCK';
     var lock=LockService.getScriptLock();
     if(!lock.tryLock(10000))throw new Error('Hệ thống đang bận');
     try {
+      stage='SHEETS';
       var sheet=SpreadsheetApp.openById(cfg.id).getSheetByName('CongViec');
       if(!sheet)throw new Error('Không tìm thấy tab CongViec');
       var headers=sheet.getRange(1,1,1,sheet.getLastColumn()).getValues()[0].map(function(x){return String(x).trim().toLowerCase()});
@@ -117,11 +122,22 @@ function doPost(e){
       row[col[4]]=owner;row[col[5]]=priority;row[col[6]]=note;
       if(rowIndex<2)row[col[7]]=new Date();
       row[col[8]]=task.done?(row[col[8]]||new Date()):'';
+      stage='WRITE';
       sheet.getRange(rowIndex>=2?rowIndex:count+1,1,1,row.length).setValues([row]);
       return zrReply_(req,true,'Đã lưu vào Google Sheets.');
     } finally {lock.releaseLock();}
   } catch(ex){
-    // Không tiết lộ khóa, ID bảng tính hoặc chi tiết nội bộ cho người dùng công khai.
-    return zrReply_(req,false,'Lưu thất bại. Kiểm tra đăng nhập Google, phân quyền tài khoản, quyền Google Sheets và định dạng dữ liệu.');
+    // Chỉ log giai đoạn + tên kiểu lỗi; không log token, email, ID Sheets hay dữ liệu công việc.
+    console.error('ZR_INGRESS_FAILED stage=' + stage + ' type=' + (ex && ex.name || 'Error'));
+    var hints = {
+      CONFIG:'Thiếu cấu hình Script Properties.',
+      REQUEST:'Yêu cầu không hợp lệ.',
+      GOOGLE_AUTH:'Không xác minh được Google ID token hoặc tài khoản chưa được cấp quyền. Kiểm tra ZR_OAUTH_CLIENT_ID và ZR_ALLOWED_EMAIL.',
+      VALIDATION:'Dữ liệu công việc không hợp lệ.',
+      LOCK:'Hệ thống đang bận. Hãy thử lại.',
+      SHEETS:'Không mở được Google Sheets hoặc cấu trúc bảng CongViec chưa đúng.',
+      WRITE:'Không ghi được công việc vào Google Sheets.'
+    };
+    return zrReply_(req,false,'Lưu thất bại ['+stage+']. '+(hints[stage]||'Kiểm tra dự án GAS.'));
   }
 }
