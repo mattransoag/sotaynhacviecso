@@ -3,6 +3,16 @@
 
 Đây là repository mã nguồn dành cho Dashboard quản trị và mô-đun nhắc việc tự động qua Zalo Bot. GitHub lưu trữ mã nguồn; **Google Apps Script** là nơi thực thi gửi tin và đọc công việc.
 
+## Website GitHub Pages
+
+Đã thêm website tĩnh vào [docs/index.html](docs/index.html) và workflow [GitHub Pages](.github/workflows/pages.yml) ở nhánh `main`.
+
+**Để xuất bản lần đầu**: vào repository → **Settings → Pages → Build and deployment → Source: GitHub Actions**. Sau đó vào **Actions → Publish website to GitHub Pages** kiểm tra kết quả hoặc chọn **Run workflow** nếu cần. Địa chỉ dự kiến sau khi triển khai thành công: `https://mattransoag.github.io/sotaynhacviecso/`.
+
+**Lưu ý:** Repository đang ở chế độ **Private**. Nếu tài khoản không có quyền GitHub Pages dành cho private repository, GitHub có thể yêu cầu nâng cấp gói hoặc chuyển repository sang Public. **Không đổi sang Public nếu chưa rà soát toàn bộ mã nguồn và dữ liệu**, đặc biệt mọi thông tin nhạy cảm.
+
+Website GitHub Pages là frontend tĩnh: có thêm, lọc, đánh dấu hoàn thành, sao lưu JSON, xuất CSV và lưu dữ liệu **cục bộ trên trình duyệt**. Trang web **chưa đồng bộ tự động** dữ liệu Google Sheets và không tự gửi tin nhắn Zalo; Bot Token cần được giữ trong Script Properties của GAS. Không nhập token vào site tĩnh. Để đồng bộ đa thiết bị cần backend có xác thực được triển khai riêng.
+
 ## Trạng thái triển khai (22/11/2026)
 
 - ✅ Mã nguồn đã lưu trong nhánh `main` của GitHub.
