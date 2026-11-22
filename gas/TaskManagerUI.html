@@ -86,8 +86,21 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
     <div id="boardPanel" class="kanban" hidden></div><div id="empty" class="empty">Bạn chưa có công việc nào. Hãy thêm một công việc để bắt đầu ✨</div>
   </section>
   <section class="card section" id="connect"><div class="head"><div><h2>🔗 Kết nối Zalo và Google Sheets</h2><p>Quản lý cấu hình nhắc việc an toàn ở GAS.</p></div></div>
-    <div class="notice"><strong>Đây là giao diện GAS quản lý công việc đã đăng nhập.</strong> Mọi thay đổi được ghi trực tiếp vào Google Sheets qua API GAS được kiểm soát. Để tự động gửi Zalo, cần lưu Chat ID và bật trigger trong dự án GAS.</div>
-    <p class="message">Token chỉ lưu trong Script Properties. Website này không hiển thị Bot Token.</p>
+    <div class="notice"><strong>Quản lý công việc và nhắc Zalo trong cùng GAS.</strong> Công việc được ghi trực tiếp vào Google Sheets. Bot Token và Chat ID chỉ lưu trong Script Properties, không hiển thị trên trang.</div>
+    <div class="stats" style="margin-top:18px">
+      <div class="card stat"><div class="meta">Bot Token</div><div class="number" id="zrTokenState" style="font-size:19px">Đang kiểm tra</div></div>
+      <div class="card stat"><div class="meta">Zalo Chat ID</div><div class="number" id="zrChatState" style="font-size:19px">Đang kiểm tra</div></div>
+      <div class="card stat"><div class="meta">Lịch tự động</div><div class="number" id="zrTriggerState" style="font-size:19px">Đang kiểm tra</div></div>
+      <div class="card stat"><div class="meta">Công việc từ Sheets</div><div class="number" id="zrSheetState" style="font-size:19px">Đang kiểm tra</div></div>
+    </div>
+    <div class="form-actions" style="margin-top:18px">
+      <button type="button" class="btn" id="zrCheckStatus">↻ Kiểm tra kết nối</button>
+      <button type="button" class="btn" id="zrTestMessage">✉ Gửi tin nhắn thử</button>
+      <button type="button" class="btn primary" id="zrInstall5">⏰ Bật nhắc việc 5 phút</button>
+      <a class="btn" href="?page=dashboard">Mở Dashboard Zalo</a>
+    </div>
+    <p class="message" id="zrStatusMessage" role="status" aria-live="polite">Đang đọc trạng thái từ Google Apps Script...</p>
+    <p class="message">Khi bật lịch 5 phút, lịch cũ của cùng hàm do tài khoản hiện tại tạo sẽ được thay thế. Thời điểm chạy có thể dao động. Tin nhắc trước hạn mặc định 60 phút, công việc quá hạn trong 24 giờ đầu và chỉ nhắc một lần mỗi giai đoạn.</p>
   </section>
   <footer class="foot">© 2026 Sổ tay nhắc việc số · Google Sheets · Google Apps Script</footer>
 </main></div>
@@ -102,7 +115,7 @@ function themeLabel(){$('themeToggle').textContent=document.documentElement.data
 themeLabel();
 $('themeToggle').onclick=()=>{const dark=document.documentElement.dataset.theme==='dark';document.documentElement.dataset.theme=dark?'light':'dark';try{localStorage.setItem(THEME,dark?'light':'dark')}catch(e){}themeLabel()};
 function request(name,...args){
- const allowed=['zrApiListTasks','zrApiSaveTask','zrApiSetDone','zrApiDeleteTask','zrApiImportTasks'];
+ const allowed=['zrApiListTasks','zrApiSaveTask','zrApiSetDone','zrApiDeleteTask','zrApiImportTasks','zrApiReminderStatus','zrApiReminderSendTest','zrApiReminderInstallFiveMinutes'];
  if(!allowed.includes(name))return Promise.reject(Error('Không cho phép lệnh này'));
  return new Promise((resolve,reject)=>{
   google.script.run.withSuccessHandler(resolve).withFailureHandler(e=>reject(Error(e.message||String(e))))[name](...args);
@@ -199,6 +212,39 @@ $('fileInput').onchange=async e=>{
   await reload();
  }catch(err){error(err)}finally{setBusy(false);e.target.value=''}
 };
+
+async function zrLoadReminderStatus(){
+ $('zrStatusMessage').textContent='Đang kiểm tra cấu hình Bot Zalo và nguồn công việc…';
+ try{
+   const r=await request('zrApiReminderStatus');
+   $('zrTokenState').textContent=r.tokenConfigured?'Đã có':'Chưa có';
+   $('zrChatState').textContent=r.chatConfigured?'Đã có':'Chưa có';
+   $('zrTriggerState').textContent=r.triggerCount+' trigger';
+   $('zrSheetState').textContent=r.sheetConnected?r.taskCount+' công việc':'Chưa kết nối';
+   $('zrStatusMessage').textContent=(r.sheetError?('Lỗi Google Sheets: '+r.sheetError+'. '):'')+
+       'Có '+r.eligibleCount+' công việc trong khoảng thời gian có thể nhắc. '+
+       'Kiểm tra lịch chạy trong mục Trình kích hoạt của dự án GAS.';
+ }catch(e){$('zrStatusMessage').textContent='Chưa kiểm tra được: '+(e.message||e)}
+}
+$('zrCheckStatus').onclick=()=>zrLoadReminderStatus();
+$('zrTestMessage').onclick=async()=>{
+ if(!confirm('Gửi một tin thử tới Zalo Chat ID đã cấu hình?'))return;
+ try{
+  $('zrStatusMessage').textContent='Đang gửi tin thử…';
+  const r=await request('zrApiReminderSendTest');
+  $('zrStatusMessage').textContent=r.message;
+ }catch(e){$('zrStatusMessage').textContent='Gửi thử thất bại: '+(e.message||e)}
+};
+$('zrInstall5').onclick=async()=>{
+ if(!confirm('Thay lịch nhắc hiện tại bằng lịch kiểm tra 5 phút/lần?'))return;
+ try{
+  $('zrStatusMessage').textContent='Đang cập nhật trigger nhắc việc…';
+  const r=await request('zrApiReminderInstallFiveMinutes');
+  $('zrStatusMessage').textContent=r.message;
+  await zrLoadReminderStatus();
+ }catch(e){$('zrStatusMessage').textContent='Không bật được lịch: '+(e.message||e)}
+};
+zrLoadReminderStatus();
 $('empty').textContent='Đang tải công việc từ Google Sheets…';
 setBusy(true);reload().catch(error).finally(()=>setBusy(false));
 </script>
