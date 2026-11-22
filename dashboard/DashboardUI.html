@@ -45,9 +45,9 @@
     </section>
     <section class="panel">
       <h2>2. Lấy Chat ID</h2>
-      <p class="label">Nhắn <b>/start</b> đến bot qua tài khoản Zalo muốn nhận nhắc việc, rồi bấm nút dưới.</p>
+      <p class="label">Nhấn <b>Tìm Chat ID mới</b> trước, sau đó ngay lập tức mở Zalo gửi <b>MALOI</b> đến bot trong lúc nút đang xử lý (khoảng 20 giây).</p>
       <div class="actions"><button onclick="call('zrDashboardCollectChat',[],showChats,this)">Tìm Chat ID mới</button></div>
-      <div class="results" id="chatResult">Chưa tìm Chat ID. Nếu bot đang dùng webhook, có thể cần nhập Chat ID đã biết.</div>
+      <div class="results" id="chatResult">Chưa tìm Chat ID. Nếu sau 20 giây vẫn không nhận được tin, cần kiểm tra webhook hoặc địa chỉ API đang sử dụng.</div>
       <label for="chatInput">Chat ID nhận nhắc việc</label>
       <input id="chatInput" placeholder="Dán hoặc chọn Chat ID nhận được" autocomplete="off">
       <div class="actions"><button onclick="saveChat(this)">Lưu Chat ID</button><button class="secondary" onclick="copyChat()">Sao chép Chat ID</button></div>
