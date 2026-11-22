@@ -1,5 +1,12 @@
 # SỔ TAY NHẮC VIỆC SỐ
 
+## Đăng nhập Google thay khóa đồng bộ (bản mới)
+
+Website GitHub Pages nay có nút **Đăng nhập bằng Google**, dùng ID token ngắn hạn (chỉ giữ trong bộ nhớ trang). Cổng GAS riêng kiểm tra ID token từ Google và danh tính được cấp phép trước khi ghi công việc vào Sheets. Không cần lưu `ZR_INGRESS_KEY` trên website.
+
+Để sử dụng: tạo **Google OAuth Web Client ID**, thêm `https://mattransoag.github.io` vào Authorized JavaScript origins; cấu hình `ZR_OAUTH_CLIENT_ID` và `ZR_ALLOWED_EMAIL` (tùy chọn `ZR_ALLOWED_SUB`) trong Script Properties của dự án GAS cổng; cập nhật `Code.gs` và triển khai phiên bản mới. Xem [hướng dẫn đăng nhập Google](gas-public-ingress/SETUP_GOOGLE_LOGIN.md). Bản GAS Zalo Bot và token không thay đổi. **Chưa xác minh vận hành thực tế** cho đến khi người dùng cấu hình OAuth.
+
+
 ## GitHub Pages → Google Sheets → Zalo (cổng ghi một chiều)
 
 **Mã mới:** [docs/sync.js](docs/sync.js) bổ sung ô cấu hình đồng bộ trên website, [gas-public-ingress/Code.gs](gas-public-ingress/Code.gs) là cổng nhận dữ liệu có khóa riêng chạy bằng **một dự án GAS mới, tách biệt** với bot Zalo.
