@@ -7,8 +7,24 @@ function zrTasksAuth_(){
   // Bảo vệ tất cả lời gọi từ trình duyệt; tránh public CRUD.
   zrDashboardGuard_();
 }
+/**
+ * Bổ sung cột mới ở cuối bảng CongViec, giữ nguyên 9 cột cũ và dữ liệu hiện có.
+ * Tự áp dụng khi truy cập màn hình công việc V3.
+ */
+function zrEnsureV3Columns_(sheet){
+  var existing=sheet.getRange(1,1,1,sheet.getLastColumn()).getValues()[0].map(function(x){return String(x).trim().toLowerCase()});
+  ['Nhắc trước (phút)','Bật nhắc Zalo','Đã nhắc các mốc'].forEach(function(name){
+    if(existing.indexOf(name.toLowerCase())<0){
+      var next=sheet.getLastColumn()+1;
+      sheet.getRange(1,next).setValue(name);
+      sheet.getRange(1,next).setFontWeight('bold').setBackground('#15345c').setFontColor('#ffffff');
+      existing.push(name.toLowerCase());
+    }
+  });
+}
 function zrTaskColumns_(){
   var sheet=zrSheet_();
+  zrEnsureV3Columns_(sheet);
   var headers=sheet.getRange(1,1,1,sheet.getLastColumn()).getValues()[0].map(function(x){return String(x).trim().toLowerCase()});
   var labels=['ID','Công việc','Hạn hoàn thành','Trạng thái','Người phụ trách','Mức ưu tiên','Ghi chú','Ngày tạo','Ngày hoàn thành'];
   var indices=labels.map(function(label){
@@ -16,7 +32,7 @@ function zrTaskColumns_(){
     if(at<0)throw new Error('Thiếu cột "'+label+'". Kiểm tra Google Sheets đã khởi tạo.');
     return at;
   });
-  return {sheet:sheet,indices:indices};
+  return {sheet:sheet,indices:indices.concat(['Nhắc trước (phút)','Bật nhắc Zalo','Đã nhắc các mốc'].map(function(n){return headers.indexOf(n.toLowerCase())}))};
 }
 function zrTaskReadRow_(row, col){
   function at(i){return row[col[i]]}
@@ -26,7 +42,9 @@ function zrTaskReadRow_(row, col){
   var status=String(at(3)||'');
   return {id:String(at(0)||''),name:String(at(1)||''),due:iso,
     status:status,done:zrFinished_(status.trim().toLowerCase()),
-    owner:String(at(4)||''),priority:String(at(5)||'Trung bình'),note:String(at(6)||'')};
+    owner:String(at(4)||''),priority:String(at(5)||'Trung bình'),note:String(at(6)||''),
+    remindMinutes:zrParseRemindMinutes_(at(9)),zaloEnabled:zrZaloEnabled_(at(10)),
+    reminderSent:String(at(11)||'')};
 }
 function zrApiListTasks(){
   zrTasksAuth_();
@@ -47,7 +65,11 @@ function zrValidateTask_(input){
   if(['Cao','Trung bình','Thấp'].indexOf(priority)<0)throw new Error('Mức ưu tiên không hợp lệ');
   var owner=String(input.owner||'').trim(),note=String(input.note||'').trim();
   if(owner.length>100||note.length>1000)throw new Error('Thông tin vượt độ dài cho phép');
-  return {name:name,due:due,priority:priority,owner:owner,note:note};
+  var reminders=zrParseRemindMinutes_(input.remindMinutes);
+  if(input.remindMinutes != null && String(input.remindMinutes).trim()!=='' && !reminders.length)
+    throw new Error('Chọn ít nhất một mốc nhắc hợp lệ');
+  return {name:name,due:due,priority:priority,owner:owner,note:note,
+    remindMinutes:reminders,zaloEnabled:input.zaloEnabled!==false};
 }
 function zrApiSaveTask(input){
   zrTasksAuth_();
@@ -72,11 +94,16 @@ function zrApiSaveTask(input){
       row[col[7]]=new Date();
       row[col[3]]='Chưa thực hiện';
     }
+    var previousDue=row[col[2]];
     row[col[1]]=task.name;
     row[col[2]]=task.due;
     row[col[4]]=task.owner;
     row[col[5]]=task.priority;
     row[col[6]]=task.note;
+    row[col[9]]=task.remindMinutes.join(',');
+    row[col[10]]=task.zaloEnabled;
+    // Khi đổi hạn, làm rỗng dấu nhắc cũ. Dấu có cả thời hạn để tránh nhắc sai.
+    if(input.id && zrDate_(previousDue).getTime()!==task.due.getTime()) row[col[11]]='';
     s.getRange(rowNum,1,1,row.length).setValues([row]);
     return zrTaskReadRow_(row,col);
   }finally{lock.releaseLock()}
@@ -126,6 +153,7 @@ function zrApiImportTasks(items){
       r[c[0]]='CV-'+Utilities.getUuid();
       r[c[1]]=t.name;r[c[2]]=t.due;r[c[3]]=items[index] && items[index].done ? 'Hoàn thành' : 'Chưa thực hiện';
       r[c[4]]=t.owner;r[c[5]]=t.priority;r[c[6]]=t.note;r[c[7]]=created;
+      r[c[9]]=t.remindMinutes.join(',');r[c[10]]=t.zaloEnabled;
       return r;
     });
     s.getRange(s.getLastRow()+1,1,rows.length,width).setValues(rows);
@@ -165,7 +193,8 @@ function zrApiReminderStatus() {
     triggerCount:triggers.length, sheetConnected:sheetOk,
     taskCount:rows, eligibleCount:eligible, sheetError:unreadable,
     checkFrequencyNote:'Tần suất thực tế kiểm tra trong mục Trình kích hoạt của Apps Script.',
-    beforeMinutes:ZR_CONFIG.beforeMinutes
+    beforeMinutes:ZR_CONFIG.beforeMinutes,
+    reminderEnabled:zrSetting_('ZR_REMINDER_ENABLED','true')!=='false'
   };
 }
 /** Gửi tin thử theo tài khoản đã cấu hình. Không tiết lộ ID người nhận. */
@@ -174,18 +203,23 @@ function zrApiReminderSendTest() {
   zrSendTest();
   return {ok:true,message:'Đã gọi Zalo API gửi tin thử. Hãy kiểm tra tài khoản Zalo nhận tin.'};
 }
-/** Thiết lập lịch kiểm tra 5 phút, xóa trigger cùng tên do chính tài khoản tạo. */
-function zrApiReminderInstallFiveMinutes() {
+/** Cài lịch chạy mỗi 1 phút; người quản trị có thể bật/tắt nhắc việc. */
+function zrApiReminderInstallOneMinute(){
   zrTasksAuth_();
   if(!zrSetting_('ZALO_BOT_TOKEN')||!zrSetting_('ZALO_CHAT_ID'))
-    throw new Error('Cần cấu hình Bot Token và Chat ID trước khi bật nhắc việc.');
+    throw new Error('Cần có Bot Token và Chat ID trước khi bật lịch.');
   zrSheet_();
-  ScriptApp.getProjectTriggers().filter(function(t){
-    return t.getHandlerFunction()==='zrCheckReminders';
-  }).forEach(function(t){ScriptApp.deleteTrigger(t)});
-  ScriptApp.newTrigger('zrCheckReminders').timeBased().everyMinutes(5).create();
-  return {ok:true,message:'Đã cài lịch kiểm tra công việc mỗi 5 phút cho tài khoản này.'};
+  zrInstallTrigger();
+  PropertiesService.getScriptProperties().setProperty('ZR_REMINDER_ENABLED','true');
+  return {ok:true,message:'Đã bật nhắc Zalo và cài lịch kiểm tra khoảng 1 phút/lần.'};
 }
+function zrApiReminderToggle(enabled){
+  zrTasksAuth_();
+  PropertiesService.getScriptProperties().setProperty('ZR_REMINDER_ENABLED', enabled===true?'true':'false');
+  return {ok:true,enabled:enabled===true};
+}
+/** Giữ tương thích nút cũ, nay dùng lịch 1 phút. */
+function zrApiReminderInstallFiveMinutes(){return zrApiReminderInstallOneMinute();}
 
 
 /**
