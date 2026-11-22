@@ -161,3 +161,59 @@ function zrInstallTrigger() {
   ScriptApp.newTrigger('zrCheckReminders').timeBased().everyMinutes(15).create();
   Logger.log('Đã cài trigger zrCheckReminders mỗi 15 phút.');
 }
+
+
+/**
+ * Chẩn đoán nhắc việc không gửi Zalo, KHÔNG gửi tin và không đổi dữ liệu.
+ * Chạy trong DỰ ÁN GAS BOT ZALO (không chạy ở cổng đồng bộ).
+ */
+function zrDiagnoseReminders() {
+  var scriptProps = PropertiesService.getScriptProperties();
+  var hasToken = !!scriptProps.getProperty('ZALO_BOT_TOKEN');
+  var hasChat = !!scriptProps.getProperty('ZALO_CHAT_ID');
+  var sheetId = scriptProps.getProperty('SPREADSHEET_ID') || '';
+  Logger.log('BOT_TOKEN: ' + (hasToken ? 'SET' : 'MISSING'));
+  Logger.log('CHAT_ID: ' + (hasChat ? 'SET' : 'MISSING'));
+  Logger.log('SHEET_ID: ' + (sheetId ? 'SET' : 'MISSING_OR_BOUND'));
+  var triggers = ScriptApp.getProjectTriggers().filter(function(t) {
+    return t.getHandlerFunction() === 'zrCheckReminders';
+  });
+  Logger.log('REMINDER_TRIGGERS: ' + triggers.length);
+  var sheet, items;
+  try {
+    sheet = zrSheet_();
+    Logger.log('TASK_SHEET: ' + sheet.getName() + ' / rows=' + Math.max(sheet.getLastRow() - 1, 0));
+    items = zrTasks_();
+  } catch(e) {
+    Logger.log('TASK_READ: FAILED ' + String(e.message).slice(0,150));
+    return;
+  }
+  var now = Date.now(), eligible = 0, completed = 0, invalidDate = 0, tooEarly = 0, tooOld = 0, alreadySent = 0;
+  items.forEach(function(task) {
+    if (zrFinished_(task.status)) { completed++; return; }
+    var due = zrDate_(task.due).getTime();
+    if (!Number.isFinite(due)) { invalidDate++; return; }
+    var upcoming = due >= now && due <= now + ZR_CONFIG.beforeMinutes * 60000;
+    var overdue = due < now && now - due <= ZR_CONFIG.overdueHours * 3600000;
+    if (!upcoming && !overdue) {
+      if (due > now) tooEarly++; else tooOld++;
+      return;
+    }
+    eligible++;
+    var stage = upcoming ? 'soon' : 'overdue';
+    var key = 'zr_' + Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,
+      task.id + '|' + due + '|' + stage).map(function(n) {
+        return ('0' + (n & 255).toString(16)).slice(-2);
+      }).join('').slice(0, 32);
+    if (scriptProps.getProperty(key)) alreadySent++;
+  });
+  Logger.log('TASKS: total=' + items.length +
+    ', eligible_now=' + eligible +
+    ', already_sent_in_stage=' + alreadySent +
+    ', completed=' + completed +
+    ', future_outside_60m=' + tooEarly +
+    ', overdue_over_24h=' + tooOld +
+    ', invalid_due=' + invalidDate);
+  Logger.log('TIME_NOW: ' + Utilities.formatDate(new Date(now), ZR_CONFIG.tz, 'dd/MM/yyyy HH:mm'));
+  Logger.log('NEXT_ACTION: run zrSendTest to verify Zalo delivery; only after confirmation run zrCheckReminders.');
+}
