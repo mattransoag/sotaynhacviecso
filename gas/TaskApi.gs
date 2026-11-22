@@ -121,10 +121,10 @@ function zrApiImportTasks(items){
   try{
     var source=zrTaskColumns_(),s=source.sheet,c=source.indices,width=s.getLastColumn();
     var created=new Date();
-    var rows=parsed.map(function(t){
+    var rows=parsed.map(function(t,index){
       var r=Array(width).fill('');
       r[c[0]]='CV-'+Utilities.getUuid();
-      r[c[1]]=t.name;r[c[2]]=t.due;r[c[3]]='Chưa thực hiện';
+      r[c[1]]=t.name;r[c[2]]=t.due;r[c[3]]=items[index] && items[index].done ? 'Hoàn thành' : 'Chưa thực hiện';
       r[c[4]]=t.owner;r[c[5]]=t.priority;r[c[6]]=t.note;r[c[7]]=created;
       return r;
     });
