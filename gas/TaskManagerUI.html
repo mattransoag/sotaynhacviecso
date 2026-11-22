@@ -272,7 +272,7 @@ async function zrLoadReminderStatus(){
    $('zrToggleReminder').textContent=r.reminderEnabled?'Tắt nhắc Zalo':'Bật nhắc Zalo';
    $('zrStatusMessage').textContent=(r.sheetError?('Lỗi Google Sheets: '+r.sheetError+'. '):'')+
        'Có '+r.eligibleCount+' công việc trong khoảng thời gian có thể nhắc. '+
-       'Kiểm tra lịch chạy trong mục Trình kích hoạt của dự án GAS.';
+       'Lần ghi nhật ký gần nhất: '+(r.lastSend||'Chưa có')+(r.lastError?' · '+r.lastError:'')+'.';
  }catch(e){$('zrStatusMessage').textContent='Chưa kiểm tra được: '+(e.message||e)}
 }
 $('zrCheckStatus').onclick=()=>zrLoadReminderStatus();
