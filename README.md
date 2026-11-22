@@ -1,4 +1,15 @@
 # SỔ TAY NHẮC VIỆC SỐ
+
+## Phương án triển khai đang chọn: GitHub Pages ngay trong repository này
+
+**Đã chuẩn bị** `docs/index.html` và `.github/workflows/pages.yml` trên nhánh `main`. Để kích hoạt Pages miễn phí từ repository hiện là **Private**, chủ tài khoản cần đổi sang **Public** tại `Settings → General → Danger Zone → Change repository visibility`; quyền đổi này không có trong kết nối GitHub hiện tại.
+
+**CẢNH BÁO:** Khi đổi sang Public, toàn bộ source và lịch sử Git được công khai, gồm các thư mục `gas/`, `dashboard/` và các tệp khác, chứ không chỉ `docs/`. Kiểm tra lịch sử commit trước khi công khai. Không đặt token trong mã, HTML, lịch sử hoặc tệp cấu hình.
+
+Sau khi đã đổi Public, vào `Settings → Pages → Build and deployment → Source: GitHub Actions`. Trong tab `Actions`, chạy hoặc kiểm tra workflow **Publish website to GitHub Pages**. URL dự kiến sau khi thành công: `https://mattransoag.github.io/sotaynhacviecso/`.
+
+Trang web tĩnh chỉ lưu công việc trong localStorage và hỗ trợ xuất/nhập tệp; không tự đồng bộ với Google Sheets, không tự gửi Zalo. GAS vẫn xử lý bot và lịch nhắc bằng các cấu hình bí mật tại Script Properties. Không đặt token vào GitHub Pages.
+
 **Zalo Bot + Google Apps Script · Không sử dụng AI**
 
 Đây là repository mã nguồn dành cho Dashboard quản trị và mô-đun nhắc việc tự động qua Zalo Bot. GitHub lưu trữ mã nguồn; **Google Apps Script** là nơi thực thi gửi tin và đọc công việc.
