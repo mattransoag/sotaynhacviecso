@@ -145,7 +145,7 @@ async function updateStatus(t){
  try{await request('zrApiSetDone',t.id,!t.done);await reload()}catch(e){error(e)}finally{setBusy(false)}
 }
 async function removeTask(t){
- if(busy||!confirm('Xóa công việc này khỏi Google Sheets? Không thể hoàn tác.'))return;
+ if(busy)return;
  setBusy(true);try{await request('zrApiDeleteTask',t.id);await reload()}catch(e){error(e)}finally{setBusy(false)}
 }
 function actionsFor(t){const w=document.createElement('div');w.className='inline-actions';w.append(
