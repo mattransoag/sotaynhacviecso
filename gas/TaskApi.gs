@@ -111,6 +111,27 @@ function zrApiDeleteTask(id){
     return {ok:true};
   }finally{lock.releaseLock()}
 }
+/** Nhập JSON từ website tĩnh; luôn thêm ID mới, không thay thế dữ liệu có sẵn. */
+function zrApiImportTasks(items){
+  zrTasksAuth_();
+  if(!Array.isArray(items)||items.length<1||items.length>100)throw new Error('Chỉ nhập 1 đến 100 công việc mỗi lần');
+  var parsed=items.map(zrValidateTask_);
+  var lock=LockService.getScriptLock();
+  if(!lock.tryLock(10000))throw new Error('Dữ liệu đang bận');
+  try{
+    var source=zrTaskColumns_(),s=source.sheet,c=source.indices,width=s.getLastColumn();
+    var created=new Date();
+    var rows=parsed.map(function(t){
+      var r=Array(width).fill('');
+      r[c[0]]='CV-'+Utilities.getUuid();
+      r[c[1]]=t.name;r[c[2]]=t.due;r[c[3]]='Chưa thực hiện';
+      r[c[4]]=t.owner;r[c[5]]=t.priority;r[c[6]]=t.note;r[c[7]]=created;
+      return r;
+    });
+    s.getRange(s.getLastRow()+1,1,rows.length,width).setValues(rows);
+    return {ok:true,count:rows.length};
+  }finally{lock.releaseLock()}
+}
 /** Trả về trang quản lý công việc đã xác thực; gọi qua doGet(e) hiện hữu. */
 function zrTaskManagerView(){
   return HtmlService.createHtmlOutputFromFile('TaskManagerUI')
