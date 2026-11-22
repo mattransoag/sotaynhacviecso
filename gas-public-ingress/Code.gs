@@ -1,28 +1,59 @@
 /**
  * WEB INGRESS: tạo dự án Apps Script HOÀN TOÀN RIÊNG.
  * Chỉ dán tệp này vào dự án mới; không thêm vào GAS Zalo Bot hiện hữu.
- * Web App: Execute as me, access Anyone. Chỉ nhận POST với khóa bí mật mạnh.
+ * Web App: Execute as me, access Anyone. Chỉ nhận POST với Google ID Token hợp lệ.
  * KHÔNG có API đọc toàn bộ công việc, không có quyền gửi Zalo.
  *
  * Script Properties:
  *  SPREADSHEET_ID: ID của bảng Google Sheets đã tạo
- *  ZR_INGRESS_KEY: khóa riêng >= 32 ký tự do người dùng tự tạo, KHÔNG viết vào GitHub
+ *  ZR_OAUTH_CLIENT_ID: OAuth 2.0 Web Client ID cho GitHub Pages
+ *  ZR_ALLOWED_EMAIL: email Google được cấp quyền (nên dùng Gmail hoặc Workspace)
+ *  ZR_ALLOWED_SUB: tùy chọn Google user subject ID, an toàn hơn email
  */
 function doGet() {
   return HtmlService.createHtmlOutput('<meta charset="utf-8"><p>Cổng đồng bộ Sổ tay nhắc việc số đang hoạt động. Không cung cấp chức năng đọc công việc.</p>');
 }
 function zrIngressReady_(){
   var p=PropertiesService.getScriptProperties();
-  var id=p.getProperty('SPREADSHEET_ID');
-  var key=p.getProperty('ZR_INGRESS_KEY');
-  if(!id||!key||key.length<32)throw new Error('Cấu hình SPREADSHEET_ID và ZR_INGRESS_KEY (ít nhất 32 ký tự) trước.');
-  return {id:id,key:key};
+  var id=String(p.getProperty('SPREADSHEET_ID')||'').trim();
+  var clientId=String(p.getProperty('ZR_OAUTH_CLIENT_ID')||'').trim();
+  var allowedEmail=String(p.getProperty('ZR_ALLOWED_EMAIL')||'').trim().toLowerCase();
+  var allowedSub=String(p.getProperty('ZR_ALLOWED_SUB')||'').trim();
+  if(!id||!clientId||(!allowedEmail&&!allowedSub))
+    throw new Error('Thiếu SPREADSHEET_ID, ZR_OAUTH_CLIENT_ID hoặc danh tính quản trị.');
+  return {id:id,clientId:clientId,email:allowedEmail,sub:allowedSub};
 }
-function zrConstantTimeEqual_(a,b) {
-  a=String(a||'');b=String(b||'');
-  var ok=a.length===b.length,diff=0,n=Math.max(a.length,b.length);
-  for(var i=0;i<n;i++)diff|=(a.charCodeAt(i)||0)^(b.charCodeAt(i)||0);
-  return !!ok&&diff===0;
+/**
+ * Xác minh token tại endpoint Google. Tokeninfo phù hợp cho triển khai cá nhân lưu lượng thấp;
+ * hệ thống sản xuất quy mô lớn nên xác minh JWT bằng thư viện chính thức và Google public keys.
+ */
+function zrVerifyGoogleIdentity_(raw,cfg){
+  var credential=String(raw||'');
+  if(credential.length<100||credential.length>5000||
+      !/^[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+$/.test(credential))
+    throw new Error('Google ID token không hợp lệ.');
+  var resp=UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo',{
+    method:'post',contentType:'application/x-www-form-urlencoded',
+    payload:'id_token='+encodeURIComponent(credential),muteHttpExceptions:true,
+    followRedirects:false
+  });
+  if(resp.getResponseCode()!==200)throw new Error('Phiên Google hết hạn hoặc token không hợp lệ.');
+  var token=JSON.parse(resp.getContentText());
+  var now=Math.floor(Date.now()/1000);
+  if(String(token.aud||'')!==cfg.clientId||
+     ['accounts.google.com','https://accounts.google.com'].indexOf(String(token.iss||''))<0||
+     !(token.email_verified===true||token.email_verified==='true')||
+     !token.sub||!Number(token.exp)||Number(token.exp)<=now)
+    throw new Error('Google ID token không đạt kiểm tra bảo mật.');
+  var email=String(token.email||'').toLowerCase();
+  if(cfg.sub) {
+    if(String(token.sub)!==cfg.sub)throw new Error('Tài khoản Google không được cấp quyền.');
+  } else {
+    // Email ngoài Gmail/Workspace có thể thay đổi quyền sở hữu sau khi được xác minh.
+    if(email!==cfg.email || !(email.endsWith('@gmail.com') || !!token.hd))
+      throw new Error('Cần đăng nhập đúng tài khoản Gmail/Workspace được cấp phép; với email khác hãy cấu hình ZR_ALLOWED_SUB.');
+  }
+  return {sub:String(token.sub),email:email};
 }
 function zrReply_(id,ok,message){
   // Chỉ chuyển kết quả tới origin GitHub Pages xác định trước.
@@ -44,8 +75,7 @@ function doPost(e){
     var cfg=zrIngressReady_();
     if(!e||!e.parameter)throw new Error('Yêu cầu thiếu dữ liệu');
     req=String(e.parameter.request_id||'').slice(0,90);
-    var key=String(e.parameter.ingress_key||'');
-    if(!zrConstantTimeEqual_(key,cfg.key))throw new Error('Không có quyền ghi dữ liệu');
+    zrVerifyGoogleIdentity_(e.parameter.credential,cfg);
     var raw=String(e.parameter.task_json||'');
     if(raw.length>12000)throw new Error('Dữ liệu quá lớn');
     var task=JSON.parse(raw);
@@ -92,6 +122,6 @@ function doPost(e){
     } finally {lock.releaseLock();}
   } catch(ex){
     // Không tiết lộ khóa, ID bảng tính hoặc chi tiết nội bộ cho người dùng công khai.
-    return zrReply_(req,false,'Lưu thất bại. Kiểm tra khóa kết nối, quyền Google Sheets và định dạng dữ liệu.');
+    return zrReply_(req,false,'Lưu thất bại. Kiểm tra đăng nhập Google, phân quyền tài khoản, quyền Google Sheets và định dạng dữ liệu.');
   }
 }
