@@ -21,3 +21,7 @@ Theo ảnh người dùng cung cấp ngày 22/11/2026, đã xác minh Bot Token 
 - Tệp `Dashboard.html` cũ được giữ lại vì lịch sử; không dùng để cài vào GAS.
 - Lệnh `getWebhookInfo` có thể báo `Not Found` trong thực tế; kết quả này **không chứng minh** bot đang có webhook.
 - Chat ID là mã định danh của cuộc trò chuyện, không phải Bot ID.
+
+## Tạo nguồn dữ liệu Google Sheets mới
+
+Nếu chưa có Google Sheets, thêm tệp [SetupWorkSheet.gs](../gas/SetupWorkSheet.gs) vào GAS. Cập nhật tệp `DashboardUI.html` từ GitHub, triển khai phiên bản GAS mới. Trong Dashboard chọn **4. Kiểm tra nguồn công việc → Tạo Google Sheets mới**. Hệ thống tự tạo và lưu `SPREADSHEET_ID` trong Script Properties, không xóa bảng có sẵn. Có thể chạy `zrCreateTaskSheetOnce` trực tiếp từ GAS để cấp quyền Google Sheets. Sau khi bảng được tạo, mở link trả về và nhập công việc rồi nhấn **Đọc danh sách công việc**. Chưa bật trigger khi chưa kiểm tra dữ liệu và gửi thử Zalo.
