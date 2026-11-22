@@ -99,7 +99,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
       <button type="button" class="btn primary" id="zrInstall5">⏰ Bật nhắc việc 5 phút</button>
       <a class="btn" href="?page=dashboard">Mở Dashboard Zalo</a>
     </div>
-    <p class="message" id="zrStatusMessage" role="status" aria-live="polite">Đang đọc trạng thái từ Google Apps Script...</p>
+    <p class="message" id="zrStatusMessage" role="status" aria-live="polite">Đang đọc trạng thái từ Google Apps Script...</p><div class="card" style="margin-top:20px;padding:20px;border:1px solid var(--line);border-radius:16px">
+  <h3 style="margin-top:0">🔁 Đổi Zalo Bot ngay trên website</h3>
+  <p class="message">Khi muốn sử dụng bot Zalo khác, bạn chỉ cần nhập Bot Token (key) mới và Chat ID của tài khoản sẽ nhận thông báo. Hệ thống sẽ thử gửi tin đến bot mới trước khi lưu. Nếu kiểm tra thất bại, bot cũ vẫn được giữ.</p>
+  <div class="fields">
+    <div class="field wide"><label class="field-label" for="zrNewBotToken">Bot Token (key) mới *</label>
+      <input id="zrNewBotToken" type="password" autocomplete="new-password" placeholder="Dán Bot Token mới từ Zalo Bot Manager"></div>
+    <div class="field wide"><label class="field-label" for="zrNewChatId">Chat ID nhận thông báo mới *</label>
+      <input id="zrNewChatId" type="text" autocomplete="off" placeholder="Dán Chat ID của Zalo nhận tin từ bot mới"></div>
+  </div>
+  <div class="form-actions"><button type="button" class="btn primary" id="zrSaveNewBot">✓ Kiểm tra và đổi bot</button><button type="button" class="btn" id="zrCancelBotForm">Xóa nội dung vừa nhập</button></div>
+  <p class="message" id="zrBotChangeState" role="status" aria-live="polite">Chỉ tài khoản quản trị được quyền thay đổi bot. Token không được lưu vào trình duyệt.</p>
+</div>
     <p class="message">Khi bật lịch 5 phút, lịch cũ của cùng hàm do tài khoản hiện tại tạo sẽ được thay thế. Thời điểm chạy có thể dao động. Tin nhắc trước hạn mặc định 60 phút, công việc quá hạn trong 24 giờ đầu và chỉ nhắc một lần mỗi giai đoạn.</p>
   </section>
   <footer class="foot">© 2026 Sổ tay nhắc việc số · Google Sheets · Google Apps Script</footer>
@@ -115,7 +126,7 @@ function themeLabel(){$('themeToggle').textContent=document.documentElement.data
 themeLabel();
 $('themeToggle').onclick=()=>{const dark=document.documentElement.dataset.theme==='dark';document.documentElement.dataset.theme=dark?'light':'dark';try{localStorage.setItem(THEME,dark?'light':'dark')}catch(e){}themeLabel()};
 function request(name,...args){
- const allowed=['zrApiListTasks','zrApiSaveTask','zrApiSetDone','zrApiDeleteTask','zrApiImportTasks','zrApiReminderStatus','zrApiReminderSendTest','zrApiReminderInstallFiveMinutes'];
+ const allowed=['zrApiListTasks','zrApiSaveTask','zrApiSetDone','zrApiDeleteTask','zrApiImportTasks','zrApiReminderStatus','zrApiReminderSendTest','zrApiReminderInstallFiveMinutes','zrApiSaveBotSettings','zrApiBotSettings','zrApiTestSavedBot'];
  if(!allowed.includes(name))return Promise.reject(Error('Không cho phép lệnh này'));
  return new Promise((resolve,reject)=>{
   google.script.run.withSuccessHandler(resolve).withFailureHandler(e=>reject(Error(e.message||String(e))))[name](...args);
@@ -243,6 +254,30 @@ $('zrInstall5').onclick=async()=>{
   $('zrStatusMessage').textContent=r.message;
   await zrLoadReminderStatus();
  }catch(e){$('zrStatusMessage').textContent='Không bật được lịch: '+(e.message||e)}
+};
+
+$('zrCancelBotForm').onclick=()=>{
+  $('zrNewBotToken').value='';
+  $('zrNewChatId').value='';
+  $('zrBotChangeState').textContent='Đã xóa các thông tin đang nhập. Cấu hình bot hiện tại không thay đổi.';
+};
+$('zrSaveNewBot').onclick=async()=>{
+  const token=$('zrNewBotToken').value.trim();
+  const chatId=$('zrNewChatId').value.trim();
+  if(token.length<15||chatId.length<5)
+    return $('zrBotChangeState').textContent='Bạn phải nhập Bot Token và Chat ID mới trước khi đổi.';
+  if(!confirm('Gửi tin thử tới bot mới và chỉ thay bot khi tin gửi thành công?'))return;
+  $('zrSaveNewBot').disabled=true;
+  $('zrBotChangeState').textContent='Đang kiểm tra bot mới và gửi tin thử…';
+  try{
+    const result=await request('zrApiSaveBotSettings',{token,chatId});
+    $('zrNewBotToken').value='';
+    $('zrNewChatId').value='';
+    $('zrBotChangeState').textContent=result.message;
+    await zrLoadReminderStatus();
+  }catch(e){
+    $('zrBotChangeState').textContent='Không đổi bot: '+(e.message||e)+'. Bot cũ vẫn được giữ nguyên.';
+  }finally{$('zrSaveNewBot').disabled=false}
 };
 zrLoadReminderStatus();
 $('empty').textContent='Đang tải công việc từ Google Sheets…';
