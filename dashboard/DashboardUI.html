@@ -47,7 +47,7 @@
       <h2>2. Lấy Chat ID</h2>
       <p class="label">Nhấn <b>Tìm Chat ID mới</b> trước, sau đó ngay lập tức mở Zalo gửi <b>MALOI</b> đến bot trong lúc nút đang xử lý (khoảng 20 giây).</p>
       <div class="actions"><button onclick="call('zrDashboardCollectChat',[],showChats,this)">Tìm Chat ID mới</button></div>
-      <div class="results" id="chatResult">Chưa tìm Chat ID. Nếu sau 20 giây vẫn không nhận được tin, cần kiểm tra webhook hoặc địa chỉ API đang sử dụng.</div>
+      <div class="actions" style="margin-top:10px"><button class="secondary" onclick="call('zrDashboardDiagnostic',[],showDiagnostic,this)">Chẩn đoán kết nối nhận tin</button></div><div class="results" id="diagnosticResult">Chưa chẩn đoán.</div><div class="results" id="chatResult">Chưa tìm Chat ID. Nếu sau 20 giây vẫn không nhận được tin, cần kiểm tra webhook hoặc địa chỉ API đang sử dụng.</div>
       <label for="chatInput">Chat ID nhận nhắc việc</label>
       <input id="chatInput" placeholder="Dán hoặc chọn Chat ID nhận được" autocomplete="off">
       <div class="actions"><button onclick="saveChat(this)">Lưu Chat ID</button><button class="secondary" onclick="copyChat()">Sao chép Chat ID</button></div>
@@ -84,13 +84,14 @@
   function toast(msg){const e=el('toast');e.textContent=msg;e.style.display='block';setTimeout(()=>e.style.display='none',4500)}
   // Các hàm phía máy chủ chỉ được gọi từ danh sách cho phép.
   function call(name,args,ok,button){
-    const allowed=['zrDashboardStatus','zrDashboardTestBot','zrDashboardCollectChat','zrDashboardSaveChatId','zrDashboardTestSend','zrDashboardTasksPreview'];
+    const allowed=['zrDashboardStatus','zrDashboardTestBot','zrDashboardCollectChat','zrDashboardDiagnostic','zrDashboardSaveChatId','zrDashboardTestSend','zrDashboardTasksPreview'];
     if(!allowed.includes(name)) return;
     if(button)button.disabled=true;
     google.script.run.withSuccessHandler(r=>{if(button)button.disabled=false;ok(r)}).withFailureHandler(e=>{if(button)button.disabled=false;toast('Lỗi: '+e.message)})[name](...args);
   }
   function init(){call('zrDashboardStatus',[],s=>{setText('sToken',s.tokenConfigured?'Đã cấu hình':'Chưa có');el('sToken').className=s.tokenConfigured?'good':'bad';setText('sChat',s.chatId||'Chưa có');setText('sSheet',s.sheet);el('chatInput').value=s.chatId;},null)}
   function showBot(r){let b=r.bot||{};setText('botResult','✅ Kết nối thành công. '+(b.name||b.username||b.first_name||'Bot trả lời hợp lệ.'))}
+  function showDiagnostic(r){setText('diagnosticResult','Bot: '+r.bot+' | Webhook: '+r.webhook+' | Kiểm tra: '+r.checkedAt)}
   function showChats(r){
     if(!r.found){setText('chatResult',r.message||'Chưa có Chat ID');return}
     const chats=r.chats||[];
