@@ -228,52 +228,34 @@ function zrInstallTrigger() {
  * Chạy trong DỰ ÁN GAS BOT ZALO (không chạy ở cổng đồng bộ).
  */
 function zrDiagnoseReminders() {
-  var scriptProps = PropertiesService.getScriptProperties();
-  var hasToken = !!scriptProps.getProperty('ZALO_BOT_TOKEN');
-  var hasChat = !!scriptProps.getProperty('ZALO_CHAT_ID');
-  var sheetId = scriptProps.getProperty('SPREADSHEET_ID') || '';
-  Logger.log('BOT_TOKEN: ' + (hasToken ? 'SET' : 'MISSING'));
-  Logger.log('CHAT_ID: ' + (hasChat ? 'SET' : 'MISSING'));
-  Logger.log('SHEET_ID: ' + (sheetId ? 'SET' : 'MISSING_OR_BOUND'));
-  var triggers = ScriptApp.getProjectTriggers().filter(function(t) {
-    return t.getHandlerFunction() === 'zrCheckReminders';
-  });
-  Logger.log('REMINDER_TRIGGERS: ' + triggers.length);
-  var sheet, items;
+  var p=PropertiesService.getScriptProperties();
+  Logger.log('BOT_TOKEN: '+(p.getProperty('ZALO_BOT_TOKEN')?'SET':'MISSING'));
+  Logger.log('CHAT_ID: '+(p.getProperty('ZALO_CHAT_ID')?'SET':'MISSING'));
+  Logger.log('REMINDER_ENABLED: '+zrSetting_('ZR_REMINDER_ENABLED','true'));
+  var triggers=ScriptApp.getProjectTriggers().filter(function(t){return t.getHandlerFunction()==='zrCheckReminders';});
+  Logger.log('REMINDER_TRIGGERS: '+triggers.length);
   try {
-    sheet = zrSheet_();
-    Logger.log('TASK_SHEET: ' + sheet.getName() + ' / rows=' + Math.max(sheet.getLastRow() - 1, 0));
-    items = zrTasks_();
-  } catch(e) {
-    Logger.log('TASK_READ: FAILED ' + String(e.message).slice(0,150));
-    return;
-  }
-  var now = Date.now(), eligible = 0, completed = 0, invalidDate = 0, tooEarly = 0, tooOld = 0, alreadySent = 0;
-  items.forEach(function(task) {
-    if (zrFinished_(task.status)) { completed++; return; }
-    var due = zrDate_(task.due).getTime();
-    if (!Number.isFinite(due)) { invalidDate++; return; }
-    var upcoming = due >= now && due <= now + ZR_CONFIG.beforeMinutes * 60000;
-    var overdue = due < now && now - due <= ZR_CONFIG.overdueHours * 3600000;
-    if (!upcoming && !overdue) {
-      if (due > now) tooEarly++; else tooOld++;
-      return;
-    }
-    eligible++;
-    var stage = upcoming ? 'soon' : 'overdue';
-    var key = 'zr_' + Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,
-      task.id + '|' + due + '|' + stage).map(function(n) {
-        return ('0' + (n & 255).toString(16)).slice(-2);
-      }).join('').slice(0, 32);
-    if (scriptProps.getProperty(key)) alreadySent++;
-  });
-  Logger.log('TASKS: total=' + items.length +
-    ', eligible_now=' + eligible +
-    ', already_sent_in_stage=' + alreadySent +
-    ', completed=' + completed +
-    ', future_outside_60m=' + tooEarly +
-    ', overdue_over_24h=' + tooOld +
-    ', invalid_due=' + invalidDate);
-  Logger.log('TIME_NOW: ' + Utilities.formatDate(new Date(now), ZR_CONFIG.tz, 'dd/MM/yyyy HH:mm'));
-  Logger.log('NEXT_ACTION: run zrSendTest to verify Zalo delivery; only after confirmation run zrCheckReminders.');
+    var items=zrTasks_(),now=Date.now(),eligible=0,already=0,disabled=0,late=0;
+    items.forEach(function(task){
+      if(zrFinished_(task.status))return;
+      if(!task.zaloEnabled){disabled++;return;}
+      var due=zrDate_(task.due);
+      if(isNaN(due.getTime()))return;
+      var marks=zrSentMarks_(task.sent,due);
+      task.remindMinutes.forEach(function(m){
+        var target=due.getTime()-m*60000;
+        if(now>=target&&now<Math.min(due.getTime(),target+ZR_CONFIG.reminderGraceMinutes*60000)){
+          eligible++;
+          if(marks.indexOf(due.getTime()+':'+m)>=0)already++;
+        }
+      });
+      if(now>=due.getTime()&&now<due.getTime()+ZR_CONFIG.reminderGraceMinutes*60000){
+        late++;
+        if(marks.indexOf(due.getTime()+':overdue')>=0)already++;
+      }
+    });
+    Logger.log('TASKS: total='+items.length+', upcoming_eligible='+eligible+', overdue_eligible='+late+', already_sent='+already+', disabled='+disabled);
+    Logger.log('NOW: '+Utilities.formatDate(new Date(now),ZR_CONFIG.tz,'dd/MM/yyyy HH:mm'));
+  }catch(e){Logger.log('TASK_READ_FAILED: '+String(e.message||e).slice(0,160));}
+  Logger.log('Không gửi tin trong hàm chẩn đoán. Kiểm tra NhatKyNhac để xem thông báo đã gửi.');
 }
