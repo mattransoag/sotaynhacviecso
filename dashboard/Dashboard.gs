@@ -5,7 +5,7 @@
  * Tuyệt đối không tạo public dashboard chạy bằng quyền tài khoản sở hữu.
  */
 function zrDashboardView() {
-  return HtmlService.createHtmlOutputFromFile('Dashboard')
+  return HtmlService.createHtmlOutputFromFile('DashboardUI')
     .setTitle('Sổ tay nhắc việc số | Dashboard Zalo');
 }
 function zrDashboardGuard_() {
