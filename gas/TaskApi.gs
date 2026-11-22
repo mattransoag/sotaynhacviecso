@@ -184,15 +184,27 @@ function zrApiReminderStatus() {
     tasks.forEach(function(task){
       if(zrFinished_(task.status))return;
       var due=zrDate_(task.due).getTime();
-      if(Number.isFinite(due) && ((due>=now&&due<=now+ZR_CONFIG.beforeMinutes*60000) ||
-          (due<now&&now-due<=ZR_CONFIG.overdueHours*3600000)))eligible++;
+      var reminders=task.remindMinutes||[60];
+      if(!task.zaloEnabled)return;
+      if(Number.isFinite(due) && ((due>=now&&reminders.some(function(m){var target=due-m*60000;return now>=target&&now<target+ZR_CONFIG.reminderGraceMinutes*60000;})) ||
+          (due<now&&now-due<ZR_CONFIG.reminderGraceMinutes*60000)))eligible++;
     });
   }catch(ex){unreadable=String(ex.message||ex).slice(0,150)}
+  var lastSend='',lastError='';
+  try{
+    var log=zrSheet_().getParent().getSheetByName('NhatKyNhac');
+    if(log&&log.getLastRow()>1){
+      var record=log.getRange(log.getLastRow(),1,1,5).getValues()[0];
+      lastSend=Utilities.formatDate(new Date(record[0]),'Asia/Ho_Chi_Minh','dd/MM/yyyy HH:mm');
+      if(/^Lỗi/.test(String(record[4]||'')))lastError='Gửi thất bại, kiểm tra nhật ký Sheets';
+    }
+  }catch(e){}
   return {
+    lastSend:lastSend,lastError:lastError,
     tokenConfigured:tokenSet,chatConfigured:chatSet,
     triggerCount:triggers.length, sheetConnected:sheetOk,
     taskCount:rows, eligibleCount:eligible, sheetError:unreadable,
-    checkFrequencyNote:'Tần suất thực tế kiểm tra trong mục Trình kích hoạt của Apps Script.',
+    checkFrequencyNote:'Cần có một trigger 1 phút; việc gửi có thể dao động theo Apps Script.',
     beforeMinutes:ZR_CONFIG.beforeMinutes,
     reminderEnabled:zrSetting_('ZR_REMINDER_ENABLED','true')!=='false'
   };
