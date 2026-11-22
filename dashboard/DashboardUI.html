@@ -61,7 +61,8 @@
     <section class="panel">
       <h2>4. Kiểm tra nguồn công việc</h2>
       <p class="label">Xem thử dữ liệu Sheets. Không chỉnh sửa hoặc xóa công việc.</p>
-      <div class="actions"><button onclick="call('zrDashboardTasksPreview',[],showTasks,this)">Đọc danh sách công việc</button></div>
+      <div class="actions"><button onclick="call('zrDashboardTasksPreview',[],showTasks,this)">Đọc danh sách công việc</button><button class="secondary" onclick="createSheet(this)">Tạo Google Sheets mới</button></div>
+      <p class="label">Chỉ bấm tạo nếu bạn chưa có bảng công việc. Hệ thống không ghi đè bảng đang liên kết.</p>
       <div class="results" id="tasksResult">Chưa đọc dữ liệu.</div>
     </section>
   </div>
@@ -84,7 +85,7 @@
   function toast(msg){const e=el('toast');e.textContent=msg;e.style.display='block';setTimeout(()=>e.style.display='none',4500)}
   // Các hàm phía máy chủ chỉ được gọi từ danh sách cho phép.
   function call(name,args,ok,button){
-    const allowed=['zrDashboardStatus','zrDashboardTestBot','zrDashboardCollectChat','zrDashboardDiagnostic','zrDashboardSaveChatId','zrDashboardTestSend','zrDashboardTasksPreview'];
+    const allowed=['zrDashboardStatus','zrDashboardTestBot','zrDashboardCollectChat','zrDashboardDiagnostic','zrDashboardSaveChatId','zrDashboardTestSend','zrDashboardTasksPreview','zrSetupWorkSheet'];
     if(!allowed.includes(name)) return;
     if(button)button.disabled=true;
     google.script.run.withSuccessHandler(r=>{if(button)button.disabled=false;ok(r)}).withFailureHandler(e=>{if(button)button.disabled=false;toast('Lỗi: '+e.message)})[name](...args);
@@ -106,6 +107,18 @@
   function saveChat(btn){const value=el('chatInput').value.trim();call('zrDashboardSaveChatId',[value],r=>{setText('sChat',r.chatId);toast('Đã lưu Chat ID');},btn)}
   function copyChat(){const v=el('chatInput').value.trim();if(!v)return toast('Chưa có Chat ID');navigator.clipboard.writeText(v).then(()=>toast('Đã sao chép'),()=>toast('Không sao chép được. Hãy chọn và sao chép thủ công.'))}
   function showSend(r){setText('sendResult',r.message||'Yêu cầu gửi thành công')}
+  function createSheet(button){
+    if(!confirm('Tạo bảng Google Sheets mới, trống và liên kết với Dashboard? Thao tác này không nhập công việc từ phần mềm cũ.'))return;
+    call('zrSetupWorkSheet',[],r=>{
+      const box=el('tasksResult');box.replaceChildren();
+      const text=document.createElement('p');text.textContent=r.message||'Đã xử lý';box.append(text);
+      if(r.url && /^https:\/\/docs\.google\.com\/spreadsheets\//.test(r.url)){
+        const a=document.createElement('a');a.href=r.url;a.target='_blank';a.rel='noopener noreferrer';a.textContent='Mở Google Sheets công việc';box.append(a);
+      }
+      setText('sSheet',r.sheet||'CongViec');
+      toast(r.created?'Đã tạo Google Sheets mới':'Đã có Google Sheets liên kết');
+    },button);
+  }
   function showTasks(r){const box=el('tasksResult');box.replaceChildren();const intro=document.createElement('p');intro.textContent='Tổng: '+r.total+' | Chưa hoàn thành: '+r.active;box.append(intro);const wrap=document.createElement('div');wrap.className='scroll';const table=document.createElement('table');table.innerHTML='<thead><tr><th>ID</th><th>Công việc</th><th>Hạn</th><th>Trạng thái</th></tr></thead>';const tbody=document.createElement('tbody');(r.preview||[]).forEach(t=>{const tr=document.createElement('tr');[t.id,t.title,t.due,t.status].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td)});tbody.append(tr)});table.append(tbody);wrap.append(table);box.append(wrap)}
   init();
 </script>
