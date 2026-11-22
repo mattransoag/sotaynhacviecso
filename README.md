@@ -24,6 +24,24 @@
 
 **Không dùng** `dashboard/Dashboard.html` cũ: tên gốc trùng với `Dashboard.gs` trong Apps Script. Hãy dùng tệp **DashboardUI.html**.
 
+## Tạo Google Sheets tự động (bản cập nhật mới)
+
+Dự án hiện có tệp [gas/SetupWorkSheet.gs](gas/SetupWorkSheet.gs) để tạo bảng công việc lần đầu, không cần tự nhập Spreadsheet ID.
+
+**Cài trong dự án GAS hiện tại:**
+1. Thêm **Tập lệnh** tên `SetupWorkSheet`, dán mã nguồn từ `gas/SetupWorkSheet.gs`.
+2. Cập nhật tệp HTML `DashboardUI.html` theo [dashboard/DashboardUI.html](dashboard/DashboardUI.html) mới.
+3. Lưu, **Triển khai → Quản lý các lượt triển khai → Chỉnh sửa → Phiên bản mới → Triển khai** (giữ truy cập **Chỉ mình tôi**).
+4. Dashboard → **4. Kiểm tra nguồn công việc → Tạo Google Sheets mới**. Cho phép quyền Google Sheets nếu được yêu cầu. Nếu Dashboard không thể xin thêm quyền, chạy `zrCreateTaskSheetOnce` một lần trực tiếp trong trình chỉnh sửa GAS để cấp quyền.
+5. Bấm **Mở Google Sheets công việc**, nhập các công việc thật rồi quay lại Dashboard → **Đọc danh sách công việc**.
+6. Sau khi **Gửi tin nhắn thử** đã nhận trên Zalo và bảng được đọc đúng, mới chạy `zrInstallTrigger` trong GAS để cài lịch nhắc.
+
+Hàm sẽ tạo bảng mới tên **SỔ TAY NHẮC VIỆC SỐ - DỮ LIỆU CÔNG VIỆC** với tab **CongViec**, có cột: `ID`, `Công việc`, `Hạn hoàn thành`, `Trạng thái`, `Người phụ trách`, `Mức ưu tiên`, `Ghi chú`, `Ngày tạo`, `Ngày hoàn thành`. Ô ngày phải nhập **đúng kiểu ngày giờ** để tránh nhắc sai. Bảng được tạo **trống**, không chứa dữ liệu minh họa hoặc dữ liệu tự nhập từ ứng dụng GAS khác.
+
+Hàm tạo bảng sẽ tự ghi `SPREADSHEET_ID`, `TASK_SHEET_NAME` và `TASK_HEADER_*` vào Script Properties. Nếu `SPREADSHEET_ID` đã có, hàm **không tạo bảng mới**; chỉ trả thông tin bảng hiện có. Không sửa, xóa dữ liệu nguồn.
+
+**Chú ý:** Nếu phần mềm GAS trước đó đã có dữ liệu lưu ở nơi khác, tạo Google Sheets không tự chuyển dữ liệu đó sang. Cần có phương án nhập/chuyển dữ liệu riêng. GitHub chỉ chứa mã nguồn, **chưa tạo Google Sheets trong Drive của bạn** cho tới khi bạn chạy hàm trên GAS.
+
 ## Hoàn tất đưa vào vận hành
 
 1. Trong GAS, bảo đảm có ba tệp `ZaloReminders.gs`, `Dashboard.gs`, `DashboardUI.html` và tên HTML được gọi trong `Dashboard.gs` là `DashboardUI`.
