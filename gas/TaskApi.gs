@@ -186,3 +186,74 @@ function zrApiReminderInstallFiveMinutes() {
   ScriptApp.newTrigger('zrCheckReminders').timeBased().everyMinutes(5).create();
   return {ok:true,message:'Đã cài lịch kiểm tra công việc mỗi 5 phút cho tài khoản này.'};
 }
+
+
+/**
+ * QUẢN LÝ BOT TRỰC TIẾP TỪ WEB GAS
+ * Không trả Token/Chat ID về browser. Không cần tạo lại deployment để đổi bot.
+ * Bảo vệ bằng guard quản trị đã có, cộng thêm kiểm tra email khi được cấu hình.
+ */
+function zrBotAdmin_() {
+  zrTasksAuth_();
+  var admin = String(PropertiesService.getScriptProperties().getProperty('ZR_ADMIN_EMAIL')||'').trim().toLowerCase();
+  var actor = String(Session.getActiveUser().getEmail()||'').trim().toLowerCase();
+  if(!admin)throw new Error('Chưa cài ZR_ADMIN_EMAIL trong Script Properties. Không thể sửa cấu hình bot.');
+  if(!actor || actor!==admin)throw new Error('Không xác minh được tài khoản quản trị. Chỉ người quản trị được đổi bot.');
+}
+function zrApiBotSettings(){
+  zrBotAdmin_();
+  var props=PropertiesService.getScriptProperties();
+  var token=props.getProperty('ZALO_BOT_TOKEN')||'';
+  var chat=props.getProperty('ZALO_CHAT_ID')||'';
+  return {tokenConfigured:!!token,chatConfigured:!!chat,
+    // Không bao giờ xuất token hoặc Chat ID đầy đủ.
+    botChangeNote:'Để đổi bot, nhập cả Bot Token mới và Chat ID của tài khoản đã nhắn với bot mới.'};
+}
+function zrBotMessage_(token,chatId,method,body){
+  var response;
+  try{
+    response=UrlFetchApp.fetch('https://bot-api.zaloplatforms.com/bot'+encodeURIComponent(token)+'/'+method,{
+      method:'post',contentType:'application/json',payload:JSON.stringify(body||{}),
+      muteHttpExceptions:true
+    });
+  }catch(e){throw new Error('Không thể kết nối Zalo Bot API. Kiểm tra quyền UrlFetchApp và kết nối mạng.');}
+  var result;
+  try{result=JSON.parse(response.getContentText());}
+  catch(e){throw new Error('Zalo API trả phản hồi không hợp lệ (HTTP '+response.getResponseCode()+').');}
+  if(response.getResponseCode()<200||response.getResponseCode()>=300||result.ok!==true){
+    // Không hiển thị body phản hồi từ bên thứ ba vì có thể chứa thông tin bí mật.
+    throw new Error('Zalo Bot API không chấp nhận cấu hình hoặc tài khoản nhận tin (HTTP '+response.getResponseCode()+').');
+  }
+  return result.result;
+}
+/** Lưu một cặp token/chat ID mới, chỉ sau khi API thực sự gửi thành công tin thử. */
+function zrApiSaveBotSettings(input){
+  zrBotAdmin_();
+  if(!input||typeof input!=='object')throw new Error('Thiếu dữ liệu cấu hình.');
+  var token=String(input.token||'').trim();
+  var chat=String(input.chatId||'').trim();
+  if(token.length<15||token.length>1024||/\s/.test(token))
+    throw new Error('Bot Token mới không hợp lệ. Hãy sao chép token từ Zalo Bot Manager.');
+  if(!/^[A-Za-z0-9:_-]{5,160}$/.test(chat))
+    throw new Error('Chat ID mới không hợp lệ. Hãy lấy từ bot mới.');
+  // Kiểm tra token và gửi tin trước khi chuyển cấu hình thực.
+  zrBotMessage_(token,chat,'getMe',{});
+  zrBotMessage_(token,chat,'sendMessage',{
+    chat_id:chat,text:'✅ Xác nhận kết nối bot mới cho Sổ tay nhắc việc số. Từ giờ bot này sẽ nhận thông báo công việc.'
+  });
+  var lock=LockService.getScriptLock();
+  if(!lock.tryLock(10000))throw new Error('Đang có thao tác thay đổi bot khác. Hãy thử lại.');
+  try{
+    // Trước khi lưu, không xóa cấu hình cũ và không thay đổi lịch.
+    PropertiesService.getScriptProperties().setProperties({
+      ZALO_BOT_TOKEN:token,ZALO_CHAT_ID:chat
+    },false);
+    return {ok:true,message:'Đã đổi bot thành công và Zalo API đã chấp nhận tin thử. Lịch nhắc hiện tại tiếp tục sử dụng cấu hình mới.'};
+  }finally{lock.releaseLock();}
+}
+/** Chỉ gửi test tới bot ĐANG LƯU, không làm lộ thông tin bot. */
+function zrApiTestSavedBot(){
+  zrBotAdmin_();
+  zrSendTest();
+  return {ok:true,message:'Zalo API đã xác nhận tin gửi thử tới bot hiện tại.'};
+}
