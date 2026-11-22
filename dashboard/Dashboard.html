@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="UTF-8">
+  <title>Sổ tay nhắc việc số</title>
+  <style>
+    :root{color-scheme:light;--blue:#2563eb;--ink:#14243e;--muted:#64748b;--bg:#f4f7fc;--line:#dfe7f2;--green:#0b8d67}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink)}
+    header{background:#fff;border-bottom:1px solid var(--line);padding:20px max(20px,calc((100vw - 1100px)/2))}
+    h1{margin:0;font-size:26px;letter-spacing:-.7px}header p{margin:4px 0 0;color:var(--muted)}
+    main{max-width:1100px;margin:24px auto;padding:0 18px;display:grid;gap:18px}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+    .panel,.stat{background:white;border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 5px 18px #1d35600a}
+    .stat strong{display:block;font-size:22px;margin-top:7px;word-break:break-word}
+    .label,small{color:var(--muted)}.good{color:var(--green)}.bad{color:#b45309}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}h2{font-size:18px;margin:0 0 8px}
+    p{margin:7px 0 16px}.actions{display:flex;flex-wrap:wrap;gap:8px}
+    button{border:1px solid var(--blue);background:var(--blue);color:white;border-radius:10px;padding:10px 15px;font-weight:650;cursor:pointer}
+    button.secondary{background:#fff;color:var(--blue)}button:disabled{opacity:.55;cursor:wait}
+    input{font:inherit;border:1px solid #c8d5e6;padding:11px 12px;border-radius:10px;width:100%;margin:8px 0 12px}
+    .results{background:#f8fbff;border:1px solid var(--line);padding:12px;border-radius:10px;margin-top:15px;min-height:45px;overflow-wrap:anywhere}
+    .alert{background:#fff8e9;border:1px solid #f4db9a;padding:12px;border-radius:12px;color:#7a4e05}
+    .steps{padding-left:22px}.steps li{padding:5px 0}a{color:var(--blue)}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:10px;border-bottom:1px solid var(--line)}.scroll{overflow:auto}
+    #toast{position:fixed;bottom:22px;right:22px;background:var(--ink);color:white;border-radius:10px;padding:12px 18px;max-width:360px;display:none}
+    @media(max-width:760px){.stats,.grid{grid-template-columns:1fr}.panel{padding:17px}h1{font-size:21px}}
+  </style>
+</head>
+<body>
+<header><h1>🔔 Sổ tay nhắc việc số</h1><p>Dashboard quản trị Zalo Bot · Không sử dụng AI</p></header>
+<main>
+  <div class="alert">🔒 Chỉ triển khai Web App với quyền truy cập <b>Chỉ mình tôi (Only myself)</b>. Token nằm trong Script Properties, không hiển thị ở trang này.</div>
+  <div class="stats">
+    <section class="stat"><span class="label">Bot Token</span><strong id="sToken">Đang kiểm tra…</strong></section>
+    <section class="stat"><span class="label">Chat ID đã lưu</span><strong id="sChat">—</strong></section>
+    <section class="stat"><span class="label">Bảng công việc</span><strong id="sSheet">—</strong></section>
+  </div>
+  <div class="grid">
+    <section class="panel">
+      <h2>1. Kết nối bot Zalo</h2>
+      <p class="label">Kiểm tra Bot Token đã cài trong thuộc tính tập lệnh.</p>
+      <div class="actions"><button onclick="call('zrDashboardTestBot',[],showBot,this)">Kiểm tra Bot Token</button></div>
+      <div class="results" id="botResult">Chưa kiểm tra.</div>
+    </section>
+    <section class="panel">
+      <h2>2. Lấy Chat ID</h2>
+      <p class="label">Nhắn <b>/start</b> đến bot qua tài khoản Zalo muốn nhận nhắc việc, rồi bấm nút dưới.</p>
+      <div class="actions"><button onclick="call('zrDashboardCollectChat',[],showChats,this)">Tìm Chat ID mới</button></div>
+      <div class="results" id="chatResult">Chưa tìm Chat ID. Nếu bot đang dùng webhook, có thể cần nhập Chat ID đã biết.</div>
+      <label for="chatInput">Chat ID nhận nhắc việc</label>
+      <input id="chatInput" placeholder="Dán hoặc chọn Chat ID nhận được" autocomplete="off">
+      <div class="actions"><button onclick="saveChat(this)">Lưu Chat ID</button><button class="secondary" onclick="copyChat()">Sao chép Chat ID</button></div>
+    </section>
+    <section class="panel">
+      <h2>3. Gửi tin nhắn thử</h2>
+      <p class="label">Chỉ thử sau khi kiểm tra token và lưu Chat ID.</p>
+      <div class="actions"><button onclick="call('zrDashboardTestSend',[],showSend,this)">Gửi thử đến Zalo</button></div>
+      <div class="results" id="sendResult">Chưa gửi thử.</div>
+    </section>
+    <section class="panel">
+      <h2>4. Kiểm tra nguồn công việc</h2>
+      <p class="label">Xem thử dữ liệu Sheets. Không chỉnh sửa hoặc xóa công việc.</p>
+      <div class="actions"><button onclick="call('zrDashboardTasksPreview',[],showTasks,this)">Đọc danh sách công việc</button></div>
+      <div class="results" id="tasksResult">Chưa đọc dữ liệu.</div>
+    </section>
+  </div>
+  <section class="panel">
+    <h2>Hướng dẫn sử dụng</h2>
+    <ol class="steps">
+      <li>Cài <code>ZALO_BOT_TOKEN</code> và <code>ZR_ADMIN_EMAIL</code> trong Script Properties.</li>
+      <li>Triển khai Dashboard GAS dưới dạng Web App, <b>Execute as: Me</b>, <b>Who has access: Only myself</b>.</li>
+      <li>Mở Dashboard bằng đúng tài khoản Google đã đăng ký, kiểm tra Bot Token.</li>
+      <li>Gửi tin mới cho bot và bấm <b>Tìm Chat ID mới</b>, sau đó lưu.</li>
+      <li>Gửi tin nhắn thử, kiểm tra dữ liệu công việc rồi mới cài lịch chạy <code>zrInstallTrigger</code>.</li>
+    </ol>
+    <p class="label">Ghi chú: Dashboard này sử dụng long polling theo thao tác bấm nút, không tự tạo hoặc xóa webhook.</p>
+  </section>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+  function el(id){return document.getElementById(id)}
+  function setText(id,value){el(id).textContent=String(value)}
+  function toast(msg){const e=el('toast');e.textContent=msg;e.style.display='block';setTimeout(()=>e.style.display='none',4500)}
+  function call(name,args,ok,button){
+    if(button)button.disabled=true;
+    google.script.run.withSuccessHandler(result=>{if(button)button.disabled=false;ok(result)}).withFailureHandler(err=>{if(button)button.disabled=false;toast('Lỗi: '+err.message);}).[name](...args);
+  }
+  // google.script.run không hỗ trợ truy cập động bằng cú pháp `.[name]` trong mọi môi trường;
+  // gọi bằng thuộc tính động để giữ tên hàm từ whitelist cục bộ.
+  function call(name,args,ok,button){
+    const allowed=['zrDashboardStatus','zrDashboardTestBot','zrDashboardCollectChat','zrDashboardSaveChatId','zrDashboardTestSend','zrDashboardTasksPreview'];
+    if(!allowed.includes(name)) return;
+    if(button)button.disabled=true;
+    google.script.run.withSuccessHandler(r=>{if(button)button.disabled=false;ok(r)}).withFailureHandler(e=>{if(button)button.disabled=false;toast('Lỗi: '+e.message)})[name](...args);
+  }
+  function init(){call('zrDashboardStatus',[],s=>{setText('sToken',s.tokenConfigured?'Đã cấu hình':'Chưa có');el('sToken').className=s.tokenConfigured?'good':'bad';setText('sChat',s.chatId||'Chưa có');setText('sSheet',s.sheet);el('chatInput').value=s.chatId;},null)}
+  function showBot(r){let b=r.bot||{};setText('botResult','✅ Kết nối thành công. '+(b.name||b.username||b.first_name||'Bot trả lời hợp lệ.'))}
+  function showChats(r){
+    if(!r.found){setText('chatResult',r.message||'Chưa có Chat ID');return}
+    const chats=r.chats||[];
+    const box=el('chatResult');box.replaceChildren();
+    chats.forEach(chat=>{
+      const div=document.createElement('div');div.style.marginBottom='8px';
+      const btn=document.createElement('button');btn.className='secondary';btn.textContent='Chọn '+chat.id;
+      btn.onclick=()=>{el('chatInput').value=chat.id;toast('Đã chọn '+chat.id+' — nhấn Lưu Chat ID để xác nhận.')};
+      div.append(document.createTextNode(chat.name+'  '),btn);box.append(div);
+    });
+  }
+  function saveChat(btn){const value=el('chatInput').value.trim();call('zrDashboardSaveChatId',[value],r=>{setText('sChat',r.chatId);toast('Đã lưu Chat ID');},btn)}
+  function copyChat(){const v=el('chatInput').value.trim();if(!v)return toast('Chưa có Chat ID');navigator.clipboard.writeText(v).then(()=>toast('Đã sao chép'),()=>toast('Không sao chép được. Hãy chọn và sao chép thủ công.'))}
+  function showSend(r){setText('sendResult',r.message||'Yêu cầu gửi thành công')}
+  function showTasks(r){const box=el('tasksResult');box.replaceChildren();const intro=document.createElement('p');intro.textContent='Tổng: '+r.total+' | Chưa hoàn thành: '+r.active;box.append(intro);const wrap=document.createElement('div');wrap.className='scroll';const table=document.createElement('table');table.innerHTML='<thead><tr><th>ID</th><th>Công việc</th><th>Hạn</th><th>Trạng thái</th></tr></thead>';const tbody=document.createElement('tbody');(r.preview||[]).forEach(t=>{const tr=document.createElement('tr');[t.id,t.title,t.due,t.status].forEach(value=>{const td=document.createElement('td');td.textContent=value;tr.append(td)});tbody.append(tr)});table.append(tbody);wrap.append(table);box.append(wrap)}
+  init();
+</script>
+</body>
+</html>
