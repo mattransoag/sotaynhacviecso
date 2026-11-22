@@ -1,5 +1,16 @@
 # SỔ TAY NHẮC VIỆC SỐ
 
+## GitHub Pages → Google Sheets → Zalo (cổng ghi một chiều)
+
+**Mã mới:** [docs/sync.js](docs/sync.js) bổ sung ô cấu hình đồng bộ trên website, [gas-public-ingress/Code.gs](gas-public-ingress/Code.gs) là cổng nhận dữ liệu có khóa riêng chạy bằng **một dự án GAS mới, tách biệt** với bot Zalo.
+
+Cần cài cổng mới theo [hướng dẫn](gas-public-ingress/SETUP.md), rồi nhập URL cổng và `ZR_INGRESS_KEY` trên website. Không bao giờ đặt Bot Token trong trình duyệt hoặc GitHub.
+
+Sau khi cài đúng, thêm/sửa/hoàn thành/xóa công việc trên GitHub Pages sẽ xếp yêu cầu gửi về Google Sheets. Hệ thống chỉ coi là **đã đồng bộ** khi GAS phản hồi xác nhận; nếu không, sẽ báo chưa xác nhận và giữ thao tác chờ để gửi lại. Công việc chỉ được Zalo nhắc khi GAS Zalo hiện có đã có Chat ID, đúng bảng và bật `zrInstallTrigger`.
+
+Đây là **đồng bộ một chiều**, không tự nhận thay đổi từ GAS/Sheets về GitHub Pages. Hiện mã đã cập nhật trên GitHub nhưng **chưa triển khai cổng GAS mới và chưa kiểm chứng gửi thực tế** trên tài khoản.
+
+
 ## Phiên bản V2 đồng bộ Google Sheets (mới)
 
 Đã có [mã API GAS](gas/TaskApi.gs) và [giao diện V2 đồng bộ](gas/TaskManagerUI.html), cũng như [hướng dẫn cài đặt chi tiết](docs/GAS_SYNC_SETUP.md).
