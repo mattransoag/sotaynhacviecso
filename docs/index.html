@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#16345c">
+<title>Sổ tay nhắc việc số · ThanhNguyen</title>
+<style>
+:root{--bg:#f2f6fc;--card:#fff;--text:#172943;--sub:#64748b;--line:#d9e4f1;--blue:#2563eb;--green:#067b60;--red:#b91c1c}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:var(--text);background:var(--bg)}
+.header{background:linear-gradient(118deg,#12345d,#205db6);color:#fff;padding:28px max(18px,calc((100vw - 1100px)/2))}
+.brand{font-weight:800;font-size:25px;letter-spacing:-.5px}.header p{opacity:.84;margin:5px 0 0}
+.shell{max-width:1140px;padding:24px 18px 70px;margin:auto;display:grid;gap:18px}
+.panel,.metric{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 10px 25px #20437708}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.metric strong{font-size:30px;display:block;margin-top:4px}.metric span{color:var(--sub);font-size:13px}
+h2{font-size:19px;margin:0 0 14px}.hint{color:var(--sub);font-size:13px;margin:8px 0}
+form{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:10px;align-items:end}
+label{font-size:13px;font-weight:650;display:block;margin-bottom:5px}input,select,textarea{border:1px solid #c9d5e6;background:#fff;border-radius:9px;padding:11px;font:inherit;width:100%;color:var(--text)}
+textarea{resize:vertical;min-height:78px}.full{grid-column:1/-1}
+button,.btn{padding:10px 15px;border-radius:9px;border:1px solid var(--blue);font:600 14px system-ui;cursor:pointer;background:var(--blue);color:white;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+button.secondary,.btn.secondary{background:white;color:var(--blue)}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #9fcbff}
+.actions{display:flex;flex-wrap:wrap;gap:9px}.row{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+table{border-collapse:collapse;width:100%;text-align:left}th,td{border-bottom:1px solid var(--line);padding:12px 9px;font-size:14px}th{color:#536981;font-size:12px}
+.wrap{overflow-x:auto}.pill{font-size:12px;padding:4px 8px;border-radius:100px;background:#e7f0ff;color:#2057a7;white-space:nowrap}.pill.done{background:#d9f7ec;color:#036c51}.pill.late{background:#fee8e8;color:#9e1a1a}
+.notice{background:#fff9e8;border:1px solid #f2daa0;border-radius:12px;padding:14px;font-size:14px}
+.small{font-size:12px;color:var(--sub)}.empty{text-align:center;color:var(--sub);padding:30px}
+@media(max-width:800px){.metrics{grid-template-columns:repeat(2,1fr)}form{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.metrics,form{grid-template-columns:1fr}.panel{padding:16px}.header{padding:24px 16px}}
+</style>
+</head>
+<body>
+<header class="header"><div class="brand">🔔 Sổ tay nhắc việc số</div><p>Quản lý công việc · Giao diện GitHub Pages · Không sử dụng AI</p></header>
+<main class="shell">
+<div class="notice"><strong>Chế độ website độc lập.</strong> Công việc nhập tại đây được lưu <strong>trên trình duyệt hiện tại</strong>, chưa đồng bộ với Google Sheets hoặc bot Zalo. Không nhập dữ liệu nhạy cảm trên thiết bị dùng chung. Bot Zalo thực tế vẫn chạy qua Google Apps Script.</div>
+<section class="metrics" aria-label="Thống kê">
+<div class="metric"><span>Tổng công việc</span><strong id="total">0</strong></div>
+<div class="metric"><span>Chưa hoàn thành</span><strong id="open">0</strong></div>
+<div class="metric"><span>Quá hạn</span><strong id="late">0</strong></div>
+<div class="metric"><span>Hoàn thành</span><strong id="done">0</strong></div>
+</section>
+<section class="panel">
+<h2>Thêm công việc</h2>
+<form id="taskForm">
+<div><label for="name">Tên công việc *</label><input id="name" maxlength="200" required placeholder="Ví dụ: Chuẩn bị báo cáo"></div>
+<div><label for="due">Hạn hoàn thành *</label><input id="due" type="datetime-local" required></div>
+<div><label for="priority">Ưu tiên</label><select id="priority"><option>Cao</option><option selected>Trung bình</option><option>Thấp</option></select></div>
+<div><label for="owner">Người phụ trách</label><input id="owner" maxlength="100" placeholder="Tên người phụ trách"></div>
+<div class="full"><label for="note">Ghi chú</label><textarea id="note" maxlength="1000" rows="2"></textarea></div>
+<div class="full actions"><button type="submit">+ Lưu công việc</button><button type="button" class="secondary" id="csv">Xuất CSV</button><button type="button" class="secondary" id="json">Sao lưu JSON</button><label class="btn secondary" for="import" style="margin:0">Nhập JSON</label><input id="import" type="file" accept="application/json,.json" hidden></div>
+</form>
+<p class="hint">Có thể xuất CSV để nhập vào Google Sheets sau khi kiểm tra đúng định dạng cột. Tệp sao lưu JSON hỗ trợ khôi phục trên trình duyệt khác.</p>
+</section>
+<section class="panel">
+<div class="row"><h2>Danh sách công việc</h2><div class="actions"><input id="search" aria-label="Tìm công việc" placeholder="Tìm công việc…" style="max-width:220px"><select id="filter" aria-label="Lọc trạng thái" style="max-width:180px"><option value="all">Tất cả</option><option value="open">Chưa hoàn thành</option><option value="late">Quá hạn</option><option value="done">Hoàn thành</option></select></div></div>
+<div class="wrap"><table><thead><tr><th>Công việc</th><th>Hạn</th><th>Ưu tiên</th><th>Người phụ trách</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody id="rows"></tbody></table></div>
+<p id="empty" class="empty">Chưa có công việc. Hãy thêm một công việc ở phía trên.</p>
+</section>
+<section class="panel"><h2>Kết nối nhắc việc Zalo</h2>
+<p>Hệ thống gửi Zalo đang được xử lý ở Google Apps Script, không nằm trên GitHub Pages để tránh lộ Bot Token. Mở Dashboard GAS riêng để gửi tin thử và quản lý Chat ID.</p>
+<div class="actions"><a class="btn" href="https://script.google.com/macros/s/AKfycbyG7h14b6gJJYL_8n3O9c6jhQj5NeRDlMesLLBO8HA3YecLUpfsdLKGjop1sruoWdAh/exec?page=dashboard" target="_blank" rel="noopener noreferrer">Mở Dashboard GAS</a><a class="btn secondary" href="https://github.com/mattransoag/sotaynhacviecso" target="_blank" rel="noopener noreferrer">Mã nguồn GitHub</a></div>
+<p class="small">Ứng dụng này không thu thập hoặc lưu Bot Token. Chức năng gửi nhắc tự động yêu cầu dữ liệu trong Google Sheets và trigger GAS đã được thiết lập.</p></section>
+</main>
+<script>
+'use strict';
+const KEY='sotaynhacviecso.tasks.v1';
+let tasks=[];
+try{const x=JSON.parse(localStorage.getItem(KEY)||'[]');tasks=Array.isArray(x)?x.filter(valid):[]}catch(e){tasks=[]}
+const el=id=>document.getElementById(id);
+function valid(t){return t&&typeof t.id==='string'&&typeof t.name==='string'&&typeof t.due==='string'}
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(tasks));return true}catch(e){alert('Không thể lưu dữ liệu trên trình duyệt này. Hãy xuất tệp sao lưu.');return false}}
+function late(t){return !t.done&&new Date(t.due).getTime()<Date.now()}
+function localDate(t){const d=new Date(t);return Number.isFinite(d.getTime())?d.toLocaleString('vi-VN'):'Không hợp lệ'}
+function put(td,value){const x=document.createElement('td');x.textContent=String(value??'');td.appendChild(x)}
+function render(){
+el('total').textContent=tasks.length;el('done').textContent=tasks.filter(t=>t.done).length;el('late').textContent=tasks.filter(late).length;el('open').textContent=tasks.filter(t=>!t.done).length;
+const query=el('search').value.toLowerCase().trim(),filter=el('filter').value;
+const list=tasks.filter(t=>t.name.toLowerCase().includes(query)&&(filter==='all'||filter==='done'&&t.done||filter==='late'&&late(t)||filter==='open'&&!t.done));
+list.sort((a,b)=>new Date(a.due)-new Date(b.due));const body=el('rows');body.replaceChildren();el('empty').hidden=list.length>0;
+for(const t of list){
+const tr=document.createElement('tr');const first=document.createElement('td');const strong=document.createElement('strong');strong.textContent=t.name;first.append(strong);
+if(t.note){const sub=document.createElement('div');sub.className='small';sub.textContent=t.note;first.append(sub)}tr.append(first);
+put(tr,localDate(t.due));put(tr,t.priority||'Trung bình');put(tr,t.owner||'—');
+const cell=document.createElement('td'),badge=document.createElement('span');badge.className='pill '+(t.done?'done':late(t)?'late':'');badge.textContent=t.done?'Hoàn thành':late(t)?'Quá hạn':'Chưa hoàn thành';cell.append(badge);tr.append(cell);
+const actions=document.createElement('td');const b=document.createElement('button');b.className='secondary';b.textContent=t.done?'Mở lại':'Hoàn thành';b.onclick=()=>{t.done=!t.done;persist();render()};const del=document.createElement('button');del.className='secondary';del.style.marginLeft='5px';del.textContent='Xóa';del.onclick=()=>{if(confirm('Xóa công việc này trên trình duyệt?')){tasks=tasks.filter(x=>x.id!==t.id);persist();render()}};actions.append(b,del);tr.append(actions);body.append(tr)
+}}
+el('taskForm').addEventListener('submit',event=>{event.preventDefault();const name=el('name').value.trim(),due=el('due').value;if(!name||!due||!Number.isFinite(new Date(due).getTime()))return alert('Nhập tên và thời hạn hợp lệ');tasks.push({id:'CV'+Date.now()+'-'+Math.random().toString(36).slice(2,7),name,due,priority:el('priority').value,owner:el('owner').value.trim(),note:el('note').value.trim(),done:false});persist();event.target.reset();render()});
+el('search').addEventListener('input',render);el('filter').addEventListener('change',render);
+function download(filename,content,type){const blob=new Blob([content],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500)}
+function esc(x){const v=String(x??'');return '"'+v.replaceAll('"','""')+'"'}
+el('csv').onclick=()=>{let rows=[['ID','Công việc','Hạn hoàn thành','Trạng thái','Người phụ trách','Mức ưu tiên','Ghi chú','Ngày tạo','Ngày hoàn thành']];tasks.forEach(t=>rows.push([t.id,t.name,localDate(t.due),t.done?'Hoàn thành':'Chưa thực hiện',t.owner,t.priority,t.note,'','']));download('cong-viec.csv','\ufeff'+rows.map(r=>r.map(esc).join(',')).join('\r\n'),'text/csv;charset=utf-8')};
+el('json').onclick=()=>download('so-tay-nhac-viec.json',JSON.stringify(tasks,null,2),'application/json');
+el('import').onchange=async e=>{const file=e.target.files?.[0];if(!file)return;try{if(file.size>2e6)throw Error('Tệp quá lớn');const d=JSON.parse(await file.text());if(!Array.isArray(d)||d.length>5000||!d.every(valid))throw Error('Dữ liệu không hợp lệ');if(confirm('Nhập tệp sẽ thay thế danh sách đang lưu trên trình duyệt. Tiếp tục?')){tasks=d.map(t=>({id:t.id,name:t.name.slice(0,200),due:t.due,owner:String(t.owner||'').slice(0,100),priority:String(t.priority||'Trung bình'),note:String(t.note||'').slice(0,1000),done:!!t.done}));persist();render()}}catch(error){alert(error.message)}e.target.value=''};
+render();
+</script>
+</body></html>
