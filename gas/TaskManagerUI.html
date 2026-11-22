@@ -57,6 +57,15 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
 @media(max-width:1150px){.layout{grid-template-columns:205px 1fr}.fields{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}}
 @media(max-width:800px){.layout{display:block}.sidebar{padding:15px;gap:10px}.sidebar .nav{display:flex;flex-wrap:wrap}.sidebar .nav a{padding:9px;font-size:12px}.nav-label,.side-bottom,.subbrand{display:none}.main{padding:22px 16px}.kanban{grid-template-columns:1fr}}
 @media(max-width:520px){.fields,.stats{grid-template-columns:1fr}.hero{grid-template-columns:1fr}.hero-visual{display:none}.topbar h1{font-size:23px}.section{padding:17px}}
+
+/* Dashboard V3: thu gọn, đưa việc quan trọng lên đầu */
+.hero{padding:14px 22px;min-height:80px}.hero h2{font-size:18px;margin-bottom:2px}.hero p{font-size:12px}.hero-visual{font-size:34px}.hero:after{width:130px;height:130px;top:-85px}
+.stats{margin:12px 0;gap:12px}.stat{padding:15px;min-height:100px}.stat .symbol{width:33px;height:33px;font-size:17px}.stat .number{font-size:25px;margin-top:4px}
+.section{padding:18px;margin-top:12px}.topbar{margin-bottom:15px}.upcoming-list{display:grid;gap:4px}
+.upcoming-row{display:flex;align-items:center;gap:12px;padding:9px 5px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.upcoming-row strong{min-width:180px;flex:1}.upcoming-row span{color:var(--muted);font-size:12px;flex:2}
+.reminder-options{display:flex;gap:8px;flex-wrap:wrap}.reminder-choice{display:inline-flex;align-items:center;gap:7px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);cursor:pointer;font-weight:600;font-size:12px}
+.reminder-choice input{width:auto;accent-color:var(--blue);min-width:16px;min-height:16px}
 </style>
 </head>
 <body>
@@ -68,15 +77,26 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
 </aside>
 <main class="main" id="overview">
   <div class="topbar"><div><h1>Bảng điều khiển</h1><p>Đồng bộ Google Sheets · Hỗ trợ nhắc việc qua Zalo Bot.</p></div><div class="top-actions"><span class="date" id="today"></span><button class="btn" id="themeToggle" type="button">☾ Chế độ tối</button><a class="btn primary" href="#create">＋ Công việc mới</a></div></div>
-  <section class="hero card"><div><h2>Chào mừng đến Sổ tay nhắc việc số 👋</h2><p>Lập kế hoạch, quản lý tiến độ và theo dõi hạn hoàn thành trên một bảng điều khiển gọn gàng, hiện đại.</p></div><div class="hero-visual">📅</div></section>
-  <section class="stats" aria-label="Thống kê"><div class="card stat"><div class="symbol">📋</div><div class="number" id="total">0</div><div class="meta">Tổng công việc</div></div><div class="card stat orange"><div class="symbol">⏳</div><div class="number" id="open">0</div><div class="meta">Chưa hoàn thành</div></div><div class="card stat red"><div class="symbol">⚠</div><div class="number" id="late">0</div><div class="meta">Đã quá hạn</div></div><div class="card stat green"><div class="symbol">✓</div><div class="number" id="done">0</div><div class="meta">Đã hoàn thành</div></div></section>
-  <section class="card section" id="create"><div class="head"><div><h2>✚ Thêm / chỉnh sửa công việc</h2><p>Nhập thông tin và nhấn Lưu công việc.</p></div></div>
+  <section class="hero card"><div><h2>Hôm nay, tập trung vào việc quan trọng ✨</h2><p>Công việc và nhắc Zalo trên một trang duy nhất.</p></div><div class="hero-visual">✓</div></section>
+  <section class="stats" aria-label="Thống kê"><div class="card stat"><div class="symbol">📋</div><div class="number" id="total">0</div><div class="meta">Tổng công việc</div></div><div class="card stat orange"><div class="symbol">⏳</div><div class="number" id="open">0</div><div class="meta">Chưa hoàn thành</div></div><div class="card stat red"><div class="symbol">⚠</div><div class="number" id="late">0</div><div class="meta">Đã quá hạn</div></div><div class="card stat green"><div class="symbol">🔔</div><div class="number" id="soon">0</div><div class="meta">Sắp đến hạn 60 phút</div></div></section>
+  <section class="card section" id="upcoming" aria-label="Công việc sắp đến hạn">
+  <div class="head"><div><h2>⏰ Việc cần chú ý</h2><p>Những công việc gần hạn nhất, cập nhật từ Google Sheets.</p></div><a class="btn" href="#tasks">Xem tất cả</a></div>
+  <div id="upcomingRows" class="upcoming-list"></div>
+</section>
+<section class="card section" id="create"><div class="head"><div><h2>✚ Thêm / chỉnh sửa công việc</h2><p>Nhập thông tin và nhấn Lưu công việc.</p></div></div>
   <form id="taskForm"><div class="fields">
     <div class="field"><label class="field-label" for="name">Tên công việc *</label><input id="name" required maxlength="200" placeholder="Ví dụ: Hoàn thành báo cáo tháng"></div>
     <div class="field"><label class="field-label" for="due">Hạn hoàn thành *</label><input id="due" type="datetime-local" required></div>
     <div class="field"><label class="field-label" for="priority">Mức độ ưu tiên</label><select id="priority"><option>Cao</option><option selected>Trung bình</option><option>Thấp</option></select></div>
     <div class="field"><label class="field-label" for="owner">Người phụ trách</label><input id="owner" maxlength="100" placeholder="Tên người phụ trách"></div>
-    <div class="field wide"><label class="field-label" for="note">Ghi chú</label><textarea id="note" maxlength="1000" placeholder="Thêm mô tả hoặc lưu ý quan trọng..."></textarea></div>
+    <div class="field wide"><label class="field-label">🔔 Nhắc trước hạn (chọn nhiều mốc)</label>
+ <div class="reminder-options" id="reminderOptions">
+ <label class="reminder-choice"><input type="checkbox" name="remindMinutes" value="1" ><span>1 phút</span></label><label class="reminder-choice"><input type="checkbox" name="remindMinutes" value="2" ><span>2 phút</span></label><label class="reminder-choice"><input type="checkbox" name="remindMinutes" value="5" checked><span>5 phút</span></label><label class="reminder-choice"><input type="checkbox" name="remindMinutes" value="10" ><span>10 phút</span></label><label class="reminder-choice"><input type="checkbox" name="remindMinutes" value="15" ><span>15 phút</span></label><label class="reminder-choice"><input type="checkbox" name="remindMinutes" value="30" ><span>30 phút</span></label><label class="reminder-choice"><input type="checkbox" name="remindMinutes" value="60" ><span>60 phút</span></label><label class="reminder-choice"><input type="checkbox" name="remindMinutes" value="1440" ><span>1 ngày</span></label>
+ </div>
+ <p class="message" style="margin:5px 0 0">Bot kiểm tra khoảng mỗi phút. Thời gian gửi thực tế có thể dao động.</p>
+ </div>
+ <div class="field"><label class="field-label" for="zaloEnabled">Thông báo Zalo</label><label class="reminder-choice"><input id="zaloEnabled" type="checkbox" checked><span>Bật nhắc cho công việc này</span></label></div>
+ <div class="field wide"><label class="field-label" for="note">Ghi chú</label><textarea id="note" maxlength="1000" placeholder="Thêm mô tả hoặc lưu ý quan trọng..."></textarea></div>
   </div><div class="form-actions"><button class="btn primary" type="submit" id="saveBtn">＋ Lưu công việc</button><button class="btn" type="button" id="cancelEdit" hidden>Hủy chỉnh sửa</button><button class="btn" type="button" id="csv">↓ Xuất CSV</button><button class="btn" type="button" id="json">↓ Sao lưu JSON</button><label class="btn" for="fileInput">↑ Nhập JSON từ bản web cũ</label><input id="fileInput" type="file" accept=".json,application/json"></div></form>
   <p class="message">Tất cả thay đổi được lưu trực tiếp vào Google Sheets. Bot Zalo có thể sử dụng cùng nguồn dữ liệu khi lịch nhắc việc đã được cài.</p>
   </section>
@@ -96,7 +116,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
     <div class="form-actions" style="margin-top:18px">
       <button type="button" class="btn" id="zrCheckStatus">↻ Kiểm tra kết nối</button>
       <button type="button" class="btn" id="zrTestMessage">✉ Gửi tin nhắn thử</button>
-      <button type="button" class="btn primary" id="zrInstall5">⏰ Bật nhắc việc 5 phút</button>
+      <button type="button" class="btn primary" id="zrInstall1">⏰ Bật lịch 1 phút</button>
+      <button type="button" class="btn" id="zrToggleReminder">Tắt nhắc Zalo</button>
       <a class="btn" href="?page=dashboard">Mở Dashboard Zalo</a>
     </div>
     <p class="message" id="zrStatusMessage" role="status" aria-live="polite">Đang đọc trạng thái từ Google Apps Script...</p><div class="card" style="margin-top:20px;padding:20px;border:1px solid var(--line);border-radius:16px">
@@ -111,7 +132,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
   <div class="form-actions"><button type="button" class="btn primary" id="zrSaveNewBot">✓ Kiểm tra và đổi bot</button><button type="button" class="btn" id="zrCancelBotForm">Xóa nội dung vừa nhập</button></div>
   <p class="message" id="zrBotChangeState" role="status" aria-live="polite">Chỉ tài khoản quản trị được quyền thay đổi bot. Token không được lưu vào trình duyệt.</p>
 </div>
-    <p class="message">Khi bật lịch 5 phút, lịch cũ của cùng hàm do tài khoản hiện tại tạo sẽ được thay thế. Thời điểm chạy có thể dao động. Tin nhắc trước hạn mặc định 60 phút, công việc quá hạn trong 24 giờ đầu và chỉ nhắc một lần mỗi giai đoạn.</p>
+    <p class="message">Lịch kiểm tra khoảng mỗi phút; tin nhắc được gửi theo các mốc bạn đã chọn ở từng công việc. Có nhật ký gửi tại tab NhatKyNhac trong Google Sheets.</p>
   </section>
   <footer class="foot">© 2026 Sổ tay nhắc việc số · Google Sheets · Google Apps Script</footer>
 </main></div>
@@ -126,7 +147,7 @@ function themeLabel(){$('themeToggle').textContent=document.documentElement.data
 themeLabel();
 $('themeToggle').onclick=()=>{const dark=document.documentElement.dataset.theme==='dark';document.documentElement.dataset.theme=dark?'light':'dark';try{localStorage.setItem(THEME,dark?'light':'dark')}catch(e){}themeLabel()};
 function request(name,...args){
- const allowed=['zrApiListTasks','zrApiSaveTask','zrApiSetDone','zrApiDeleteTask','zrApiImportTasks','zrApiReminderStatus','zrApiReminderSendTest','zrApiReminderInstallFiveMinutes','zrApiSaveBotSettings','zrApiBotSettings','zrApiTestSavedBot'];
+ const allowed=['zrApiListTasks','zrApiSaveTask','zrApiSetDone','zrApiDeleteTask','zrApiImportTasks','zrApiReminderStatus','zrApiReminderSendTest','zrApiReminderInstallOneMinute','zrApiReminderToggle','zrApiSaveBotSettings','zrApiBotSettings','zrApiTestSavedBot'];
  if(!allowed.includes(name))return Promise.reject(Error('Không cho phép lệnh này'));
  return new Promise((resolve,reject)=>{
   google.script.run.withSuccessHandler(resolve).withFailureHandler(e=>reject(Error(e.message||String(e))))[name](...args);
@@ -165,7 +186,7 @@ function addTable(list){
  for(const t of list){
   const tr=document.createElement('tr'),first=document.createElement('td');
   const name=document.createElement('div');name.className='task-title';name.textContent=t.name;first.append(name);
-  if(t.note){const note=document.createElement('div');note.className='task-note';note.textContent=t.note;first.append(note)}tr.append(first);
+  if(t.note){const note=document.createElement('div');note.className='task-note';note.textContent=t.note;first.append(note)}const rm=document.createElement('div');rm.className='task-note';rm.textContent=t.zaloEnabled===false?'🔕 Tắt nhắc Zalo':'🔔 '+(t.remindMinutes||[60]).map(n=>n===1440?'1 ngày':n+' phút').join(' · ');first.append(rm);tr.append(first);
   cell(tr,dateLabel(t.due));
   const p=document.createElement('td');p.append(chip(t.priority||'Trung bình',t.priority==='Cao'?'high':''));tr.append(p);
   cell(tr,t.owner||'—');
@@ -187,19 +208,35 @@ function addBoard(list){
  }
 }
 function render(){
- $('total').textContent=tasks.length;$('open').textContent=tasks.filter(t=>!t.done).length;$('done').textContent=tasks.filter(t=>t.done).length;$('late').textContent=tasks.filter(late).length;
+ $('total').textContent=tasks.length;$('open').textContent=tasks.filter(t=>!t.done).length;
+ $('soon').textContent=tasks.filter(t=>!t.done&&dueTime(t)>=Date.now()&&dueTime(t)<=Date.now()+3600000).length;
+ $('late').textContent=tasks.filter(late).length;
+ const next=tasks.filter(t=>!t.done).sort((a,b)=>dueTime(a)-dueTime(b)).slice(0,5);
+ const box=$('upcomingRows');box.replaceChildren();
+ if(!next.length){const p=document.createElement('p');p.className='message';p.textContent='Hiện chưa có công việc cần theo dõi.';box.append(p)}
+ next.forEach(t=>{
+   const line=document.createElement('div');line.className='upcoming-row';
+   const name=document.createElement('strong');name.textContent=t.name;
+   const meta=document.createElement('span');meta.textContent=(late(t)?'⚠ Quá hạn · ':'📅 ')+dateLabel(t.due)+' · Nhắc '+(t.remindMinutes||[60]).map(n=>n===1440?'1 ngày':n+'p').join(', ');
+   const btn=action('✎ Sửa',()=>editTask(t));
+   line.append(name,meta,btn);box.append(line);
+ });
  const list=filtered();$('empty').hidden=list.length!==0;$('tablePanel').hidden=view!=='table';$('boardPanel').hidden=view!=='board';addTable(list);addBoard(list);
 }
 async function reload(){const data=await request('zrApiListTasks');tasks=Array.isArray(data)?data:[];render()}
-function resetEditor(){editing=null;$('taskForm').reset();$('saveBtn').textContent='＋ Lưu công việc';$('cancelEdit').hidden=true}
+function selectedReminders(){return [...document.querySelectorAll('input[name="remindMinutes"]:checked')].map(x=>Number(x.value))}
+function applyReminders(minutes){const values=(Array.isArray(minutes)&&minutes.length?minutes:[60]).map(Number);
+ document.querySelectorAll('input[name="remindMinutes"]').forEach(x=>x.checked=values.includes(Number(x.value)))}
+function resetEditor(){editing=null;$('taskForm').reset();applyReminders([5]);$('zaloEnabled').checked=true;$('saveBtn').textContent='＋ Lưu công việc';$('cancelEdit').hidden=true}
 function localInput(d){const date=new Date(d);if(!Number.isFinite(date.getTime()))return '';const z=n=>String(n).padStart(2,'0');return date.getFullYear()+'-'+z(date.getMonth()+1)+'-'+z(date.getDate())+'T'+z(date.getHours())+':'+z(date.getMinutes())}
-function editTask(t){editing=t.id;$('name').value=t.name;$('due').value=localInput(t.due);$('priority').value=t.priority||'Trung bình';$('owner').value=t.owner||'';$('note').value=t.note||'';$('saveBtn').textContent='✓ Lưu thay đổi';$('cancelEdit').hidden=false;$('create').scrollIntoView({behavior:'smooth'})}
+function editTask(t){editing=t.id;$('name').value=t.name;$('due').value=localInput(t.due);$('priority').value=t.priority||'Trung bình';$('owner').value=t.owner||'';$('note').value=t.note||'';applyReminders(t.remindMinutes);$('zaloEnabled').checked=t.zaloEnabled!==false;$('saveBtn').textContent='✓ Lưu thay đổi';$('cancelEdit').hidden=false;$('create').scrollIntoView({behavior:'smooth'})}
 $('cancelEdit').onclick=resetEditor;
 $('taskForm').addEventListener('submit',async e=>{
  e.preventDefault();if(busy)return;
  const name=$('name').value.trim(),due=$('due').value;
  if(!name||!due||!Number.isFinite(new Date(due).getTime()))return alert('Hãy nhập tên công việc và thời hạn hợp lệ');
- const item={id:editing||'',name,due:new Date(due).toISOString(),priority:$('priority').value,owner:$('owner').value.trim(),note:$('note').value.trim()};
+ const item={id:editing||'',name,due:new Date(due).toISOString(),priority:$('priority').value,owner:$('owner').value.trim(),note:$('note').value.trim(),remindMinutes:selectedReminders(),zaloEnabled:$('zaloEnabled').checked};
+ if(item.zaloEnabled&&!item.remindMinutes.length)return alert('Hãy chọn ít nhất một mốc nhắc Zalo hoặc tắt nhắc cho công việc.');
  setBusy(true);
  try{await request('zrApiSaveTask',item);resetEditor();await reload();$('tasks').scrollIntoView({behavior:'smooth'})}catch(err){error(err)}finally{setBusy(false)}
 });
@@ -232,6 +269,7 @@ async function zrLoadReminderStatus(){
    $('zrChatState').textContent=r.chatConfigured?'Đã có':'Chưa có';
    $('zrTriggerState').textContent=r.triggerCount+' trigger';
    $('zrSheetState').textContent=r.sheetConnected?r.taskCount+' công việc':'Chưa kết nối';
+   $('zrToggleReminder').textContent=r.reminderEnabled?'Tắt nhắc Zalo':'Bật nhắc Zalo';
    $('zrStatusMessage').textContent=(r.sheetError?('Lỗi Google Sheets: '+r.sheetError+'. '):'')+
        'Có '+r.eligibleCount+' công việc trong khoảng thời gian có thể nhắc. '+
        'Kiểm tra lịch chạy trong mục Trình kích hoạt của dự án GAS.';
@@ -246,16 +284,22 @@ $('zrTestMessage').onclick=async()=>{
   $('zrStatusMessage').textContent=r.message;
  }catch(e){$('zrStatusMessage').textContent='Gửi thử thất bại: '+(e.message||e)}
 };
-$('zrInstall5').onclick=async()=>{
- if(!confirm('Thay lịch nhắc hiện tại bằng lịch kiểm tra 5 phút/lần?'))return;
+$('zrInstall1').onclick=async()=>{
+ if(!confirm('Cài lịch kiểm tra nhắc Zalo khoảng mỗi 1 phút?'))return;
  try{
   $('zrStatusMessage').textContent='Đang cập nhật trigger nhắc việc…';
-  const r=await request('zrApiReminderInstallFiveMinutes');
+  const r=await request('zrApiReminderInstallOneMinute');
   $('zrStatusMessage').textContent=r.message;
   await zrLoadReminderStatus();
  }catch(e){$('zrStatusMessage').textContent='Không bật được lịch: '+(e.message||e)}
 };
 
+$('zrToggleReminder').onclick=async()=>{
+ const enable=$('zrToggleReminder').textContent.includes('Bật');
+ if(!confirm(enable?'Bật lại thông báo Zalo tự động?':'Tạm dừng toàn bộ thông báo Zalo tự động?'))return;
+ try{await request('zrApiReminderToggle',enable);await zrLoadReminderStatus()}
+ catch(e){$('zrStatusMessage').textContent='Không đổi được trạng thái: '+(e.message||e)}
+};
 $('zrCancelBotForm').onclick=()=>{
   $('zrNewBotToken').value='';
   $('zrNewChatId').value='';
