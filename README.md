@@ -1,5 +1,16 @@
 # SỔ TAY NHẮC VIỆC SỐ
 
+## Phiên bản V2 đồng bộ Google Sheets (mới)
+
+Đã có [mã API GAS](gas/TaskApi.gs) và [giao diện V2 đồng bộ](gas/TaskManagerUI.html), cũng như [hướng dẫn cài đặt chi tiết](docs/GAS_SYNC_SETUP.md).
+
+- Website GitHub Pages vẫn là sổ tay lưu trên **trình duyệt**, có nút chuyển sang bản đồng bộ.
+- Bản **GAS ?page=tasks** đăng nhập riêng, cho phép tạo/sửa/hoàn thành/xóa công việc trên Google Sheets cùng dữ liệu nguồn mà Zalo Bot nhắc việc sử dụng.
+- Muốn chuyển dữ liệu cũ: sao lưu JSON trên website Pages rồi nhập JSON tại trang GAS, không ghi đè dữ liệu có sẵn.
+- Không kết nối website công khai trực tiếp với API viết không xác thực. Bot Token giữ trong Script Properties.
+- **Chưa kích hoạt trực tiếp trên GAS**: chủ dự án cần cài `TaskApi.gs`, `TaskManagerUI.html`, thêm nhánh `page=tasks` vào `doGet(e)` hiện tại rồi cập nhật deployment. Chỉ bật trigger sau khi kiểm tra gửi thử và đọc công việc.
+
+
 ## Phương án triển khai đang chọn: GitHub Pages ngay trong repository này
 
 **Đã chuẩn bị** `docs/index.html` và `.github/workflows/pages.yml` trên nhánh `main`. Để kích hoạt Pages miễn phí từ repository hiện là **Private**, chủ tài khoản cần đổi sang **Public** tại `Settings → General → Danger Zone → Change repository visibility`; quyền đổi này không có trong kết nối GitHub hiện tại.
