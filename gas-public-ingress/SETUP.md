@@ -26,6 +26,16 @@ Dashboard Zalo hiện tại dùng quyền **Chỉ mình tôi** và có quyền t
 
 **Lưu ý:** Trang Pages dùng cổng gửi dữ liệu theo một chiều, không tự tải các thay đổi thực hiện trực tiếp trong GAS/Sheets về trang Pages. Bạn nên quản lý công việc chủ yếu từ một nơi để tránh xung đột. Nội dung nhập trên web vẫn lưu trong trình duyệt, có thể sao lưu ra JSON.
 
+## Khi website báo “Đang gửi yêu cầu tới Google Sheets…” quá lâu
+
+1. Mở **dự án GAS cổng đồng bộ riêng** → **Lượt thực thi (Executions)**, kiểm tra có hàm `doPost` chạy vào thời điểm vừa nhấn gửi không.
+2. Nếu không có `doPost`, kiểm tra URL `/exec`, quyền Web App `Anyone`, cửa sổ trình duyệt và các tiện ích chặn nội dung.
+3. Nếu `doPost` chạy nhưng website vẫn không hiện xác nhận, cập nhật lại [Code.gs](Code.gs) từ GitHub. Bản mới có `setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)` cho trang xác nhận ngắn. Sau đó chọn **Triển khai → Quản lý lượt triển khai → Chỉnh sửa → Phiên bản mới → Triển khai**.
+4. Nếu `doPost` thất bại, kiểm tra thuộc tính `SPREADSHEET_ID`, `ZR_INGRESS_KEY` và quyền truy cập Sheets (không chia sẻ khóa bí mật).
+5. Kiểm tra trực tiếp tab `CongViec`. Nếu công việc đã tồn tại, không cần tạo lại công việc thử; chỉ xử lý trường hợp website chưa nhận xác nhận.
+
+Lưu ý: Khóa đồng bộ đã nhập không có nghĩa là API đã xác thực xong; cần một thao tác thực tế và kết quả lưu trong Sheets. Khi gửi theo iframe bị giới hạn bởi trình duyệt, hệ thống có thể không nhận được xác nhận dù Sheets đã được ghi.
+
 ## Bảo mật
 
 - Website GitHub Pages là công khai; **không viết ZR_INGRESS_KEY hoặc Bot Token vào mã nguồn**.
