@@ -1,23 +1,23 @@
-# Dashboard riêng cho Sổ tay nhắc việc số
+# Dashboard quản trị Zalo Bot
 
-Giao diện trực quan quản trị Zalo Bot, Chat ID, gửi thử, xem trước dữ liệu Google Sheets. Không sử dụng AI.
+Tệp hiện hành: [Dashboard.gs](Dashboard.gs) và [DashboardUI.html](DashboardUI.html). Dùng cùng dự án Google Apps Script với [ZaloReminders.gs](../gas/ZaloReminders.gs).
 
 ## Cài đặt
 
-1. Mở dự án Apps Script có `ZaloReminders.gs` đang hoạt động.
-2. Thêm tệp script `Dashboard.gs` và tệp **HTML** tên `Dashboard` (`Dashboard.html`) theo nội dung thư mục này.
-3. Chỉ thêm `DashboardEntry.gs` khi dự án **chưa có** `doGet(e)`. Nếu đã có `doGet(e)`, tích hợp nhánh `?page=dashboard` vào `doGet` sẵn có (ví dụ: `if(e.parameter.page==='dashboard')return zrDashboardView();`). Không tạo hai hàm doGet cùng tên.
-4. Trong Project Settings → Script Properties: đặt `ZR_ADMIN_EMAIL` = email Google đăng nhập dự án; giữ `ZALO_BOT_TOKEN` ở Script Properties (không ghi token vào code).
-5. Deploy → New deployment → Web app → Execute as **Me** → Who has access **Only myself**. Mở đường dẫn web app đã được cấp bằng tài khoản được cấu hình.
-6. Bấm **Kiểm tra Bot Token** → gửi `/start` cho bot → **Tìm Chat ID mới** → **Lưu Chat ID** → **Gửi thử đến Zalo**.
-7. Cài `SPREADSHEET_ID`, `TASK_SHEET_NAME` và `TASK_HEADER_*` đúng dữ liệu thật; thử **Đọc danh sách công việc**. Chỉ sau đó mới chạy `zrInstallTrigger`.
+1. Thêm tệp **Tập lệnh** tên `Dashboard.gs` và tệp **HTML** tên `DashboardUI.html`. Google Apps Script không cho tạo hai tệp có cùng tên gốc `Dashboard`.
+2. Trong `Dashboard.gs`, `zrDashboardView()` phải gọi `HtmlService.createHtmlOutputFromFile('DashboardUI')`.
+3. Nếu dự án GAS có `doGet(e)` rồi, **không tạo hàm thứ hai**. Đưa nhánh `if (e && e.parameter && e.parameter.page === 'dashboard') return zrDashboardView();` vào đầu hàm hiện tại, và giữ nguyên luồng xử lý chính.
+4. Đặt `ZR_ADMIN_EMAIL` là email quản trị và `ZALO_BOT_TOKEN` trong Script Properties. Không đưa token vào GitHub.
+5. Triển khai ứng dụng web bằng **Execute as: Me**, **Who has access: Only myself** (nếu ứng dụng chính cần chia sẻ công khai, hãy tách Dashboard vào dự án GAS riêng với kết nối bảo mật thay vì công khai nhánh quản trị).
+6. Kiểm tra Bot Token → Tìm Chat ID mới → Chọn → Lưu Chat ID → Gửi tin thử.
+7. Đọc thử công việc; hoàn thiện mapping dữ liệu trước khi bật trigger.
 
-**Quan trọng:** Giá trị `Session.getActiveUser().getEmail()` phải có sẵn cho người dùng đã đăng nhập. Trong một số cấu hình Apps Script có thể trống: Dashboard sẽ từ chối truy cập an toàn. Hãy dùng bản triển khai chỉ mình tôi, không tắt kiểm tra để mở public.
+## Trạng thái
 
-## Lấy Chat ID không cần xem log
+Theo ảnh người dùng cung cấp ngày 22/11/2026, đã xác minh Bot Token thành công và đã hiển thị một Chat ID được lấy từ Zalo. Chưa có bằng chứng từ API trong phiên làm việc này rằng trigger nhắc việc thực tế đã chạy hoặc dữ liệu công việc đã được xác minh.
 
-Dashboard dùng getUpdates và đọc object `result.message.chat.id`. Chỉ nhận được tin mới khi bot đang ở chế độ polling. Nếu hiện timeout thì nhắn tin mới cho bot rồi thử lại. Nếu bot đang dùng webhook, cần chuyển sang cơ chế lấy Chat ID tại webhook hoặc nhập thủ công Chat ID đã xác minh. Dashboard không tự xóa webhook.
+## Chú ý
 
-## Giới hạn
-
-Dashboard chưa được cài đặt vào GAS của người dùng; chỉ mới có mã trên GitHub. Vì `/exec` không mở được mã nguồn GAS nên không thể tự động đẩy sang dự án. Để dùng độc lập, cần cài `ZaloReminders.gs` cùng dự án hoặc điều chỉnh giao tiếp server cho dự án riêng. Dashboard không hiển thị token, không tự chỉnh sửa dữ liệu Google Sheets. Không chia sẻ đường dẫn Dashboard triển khai công khai.
+- Tệp `Dashboard.html` cũ được giữ lại vì lịch sử; không dùng để cài vào GAS.
+- Lệnh `getWebhookInfo` có thể báo `Not Found` trong thực tế; kết quả này **không chứng minh** bot đang có webhook.
+- Chat ID là mã định danh của cuộc trò chuyện, không phải Bot ID.
