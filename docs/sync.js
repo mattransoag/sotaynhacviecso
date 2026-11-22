@@ -7,10 +7,11 @@
 (() => {
   const QUEUE_KEY = 'sotaynhacviecso.syncQueue.v1';
   const ENDPOINT_KEY = 'sotaynhacviecso.ingressEndpoint.v1';
+  const DEFAULT_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyo8es5sZXxaD7PEwqEi1C0nfleP2IiFj52i0mw6-WkfGMf3J0XGN-5cLqO7NcloTt30Q/exec';
   const $ = id => document.getElementById(id);
-  let secret = '', endpoint = '', queue = [], sending = false, pending = null;
+  let secret = '', endpoint = DEFAULT_ENDPOINT, queue = [], sending = false, pending = null;
   let snapshot = new Map(tasks.map(t => [t.id, JSON.stringify(t)]));
-  try { endpoint = localStorage.getItem(ENDPOINT_KEY) || ''; } catch (_) {}
+  try { endpoint = localStorage.getItem(ENDPOINT_KEY) || DEFAULT_ENDPOINT; } catch (_) {}
   try { const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); queue = Array.isArray(q) ? q.slice(0, 500) : []; } catch (_) {}
   function setStatus(message, kind = '') {
     $('syncStatus').textContent = message + (queue.length ? ' · ' + queue.length + ' thao tác chờ' : '');
