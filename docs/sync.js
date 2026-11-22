@@ -7,11 +7,13 @@
 (() => {
   const QUEUE_KEY = 'sotaynhacviecso.syncQueue.v1';
   const ENDPOINT_KEY = 'sotaynhacviecso.ingressEndpoint.v1';
+  const CLIENT_KEY = 'sotaynhacviecso.googleClientId.v1';
   const DEFAULT_ENDPOINT = 'https://script.google.com/macros/s/AKfycbyo8es5sZXxaD7PEwqEi1C0nfleP2IiFj52i0mw6-WkfGMf3J0XGN-5cLqO7NcloTt30Q/exec';
   const $ = id => document.getElementById(id);
-  let secret = '', endpoint = DEFAULT_ENDPOINT, queue = [], sending = false, pending = null;
+  let identityToken = '', expiresAt = 0, clientId = '', endpoint = DEFAULT_ENDPOINT, queue = [], sending = false, pending = null;
   let snapshot = new Map(tasks.map(t => [t.id, JSON.stringify(t)]));
   try { endpoint = localStorage.getItem(ENDPOINT_KEY) || DEFAULT_ENDPOINT; } catch (_) {}
+  try { clientId = localStorage.getItem(CLIENT_KEY) || ''; } catch (_) {}
   try { const q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); queue = Array.isArray(q) ? q.slice(0, 500) : []; } catch (_) {}
   function setStatus(message, kind = '') {
     $('syncStatus').textContent = message + (queue.length ? ' · ' + queue.length + ' thao tác chờ' : '');
@@ -73,40 +75,41 @@
   // The form targets a sandboxed iframe, so its response can't navigate away.
   // GAS returns a postMessage acknowledgement, never the Bot Token.
   const frame = $('syncFrame'), form = $('syncTransport');
-  function submitForm(item, key, url, id) {
+  function submitForm(item, token, url, id) {
     const values = {
-      request_id:id, ingress_key:key, action:item.action, task_json:JSON.stringify(item.task)
+      request_id:id, credential:token, action:item.action, task_json:JSON.stringify(item.task)
     };
     Object.entries(values).forEach(([name,value]) => {
       form.elements.namedItem(name).value = value;
     });
     form.action = url;
     form.submit();
-    // Don't leave a secret in the DOM after submitting.
-    form.elements.namedItem('ingress_key').value = '';
+    // Google ID token is only held in memory and removed from DOM after submission.
+    form.elements.namedItem('credential').value = '';
   }
   function clearPending() {
     if (pending) {clearTimeout(pending.timer); pending = null;}
   }
   async function flush() {
     if(sending) return;
-    if(!endpoint || !secret) {
-      setStatus('Chưa kết nối. Công việc đang lưu cục bộ; chưa gửi đến Google Sheets.', 'warn');
+    if(!endpoint || !identityToken || Date.now() >= expiresAt) {
+      if(identityToken && Date.now() >= expiresAt) identityToken = '';
+      setStatus('Cần đăng nhập bằng Google để gửi công việc. Dữ liệu vẫn lưu cục bộ.', 'warn');
       return;
     }
     if(!queue.length) {
-      setStatus('Đã nhập URL và khóa vào phiên này, nhưng CHƯA xác minh kết nối GAS. Hãy tạo một công việc rồi kiểm tra xác nhận lưu.', 'warn');
+      setStatus('Đã đăng nhập Google. Chưa có thao tác đồng bộ để xác minh kết nối Sheets.', 'warn');
       return;
     }
     sending = true;
-    while(queue.length && endpoint && secret) {
+    while(queue.length && endpoint && identityToken && Date.now() < expiresAt) {
       const item = queue[0];
       const id = 'ZR'+Date.now()+'-'+Math.random().toString(36).slice(2,12);
       setStatus('Đang gửi yêu cầu tới Google Sheets…');
       const result = await new Promise(resolve => {
         const timer = setTimeout(() => {clearPending();resolve({ok:false,message:'Không nhận xác nhận từ GAS; có thể bị chặn iframe hoặc triển khai sai.'})},45000);
         pending = {id, timer, resolve};
-        try { submitForm(item,secret,endpoint,id); }
+        try { submitForm(item,identityToken,endpoint,id); }
         catch(e) {clearPending();resolve({ok:false,message:'Không gửi được: '+e.message})}
       });
       clearPending();
@@ -123,17 +126,52 @@
     if(!(/^https:\/\/script\.google\.com$/.test(origin) || /^https:\/\/([a-z0-9-]+\.)*googleusercontent\.com$/i.test(origin))) return;
     pending.resolve({ok: event.data.ok===true, message:String(event.data.message||'')});
   });
-  $('syncConnect').onclick = () => {
-    const url=$('syncEndpoint').value.trim(),key=$('syncSecret').value.trim();
-    if(!validEndpoint(url)) return setStatus('Địa chỉ GAS không đúng. Dùng HTTPS và URL /exec của cổng đồng bộ riêng.', 'error');
-    if(key.length<32) return setStatus('Khóa kết nối phải có ít nhất 32 ký tự.', 'error');
-    endpoint=url;secret=key; // memory only; never persist secret
-    $('syncSecret').value='';
-    try{localStorage.setItem(ENDPOINT_KEY,url)}catch(_){}
-    setStatus(queue.length ? 'Đã nhận cấu hình. Đang thử gửi các thay đổi đang chờ.' : 'Đã nhập cấu hình, nhưng chưa có công việc để kiểm tra kết nối. Hãy thêm một công việc thử.', 'warn');
+  function googleReady() {
+    return !!(window.google && google.accounts && google.accounts.id);
+  }
+  function decodeExpiry(jwt){
+    try {
+      const p = jwt.split('.')[1];
+      const s = atob(p.replace(/-/g,'+').replace(/_/g,'/'));
+      const exp = JSON.parse(s).exp;
+      return Number(exp)*1000;
+    } catch(_) {return 0;}
+  }
+  function initializeLogin(){
+    const url = $('syncEndpoint').value.trim();
+    const cid = $('syncClientId').value.trim();
+    if(!validEndpoint(url))return setStatus('URL cổng GAS không hợp lệ.', 'error');
+    if(!/^[0-9]+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/.test(cid))
+      return setStatus('Google OAuth Client ID chưa đúng định dạng.', 'error');
+    if(!googleReady())return setStatus('Không tải được Google Identity Services. Kiểm tra kết nối mạng hoặc chặn quảng cáo/cookie.', 'error');
+    endpoint = url;clientId = cid;
+    try {localStorage.setItem(ENDPOINT_KEY,endpoint);localStorage.setItem(CLIENT_KEY,clientId);}catch(_){}
+    identityToken = '';expiresAt=0;
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: (response) => {
+        if(!response || !response.credential)return setStatus('Không nhận được xác thực Google.', 'error');
+        identityToken = response.credential;
+        expiresAt = decodeExpiry(identityToken);
+        if(expiresAt <= Date.now()) {identityToken='';return setStatus('Google ID token hết hạn. Hãy đăng nhập lại.', 'error');}
+        // Only the GAS backend can actually verify this Google credential.
+        setStatus('Đã nhận phiên Google, đang kiểm tra quyền qua GAS. Tạo công việc thử để xác minh.', 'warn');
+        void flush();
+      },
+      auto_select: false,
+      ux_mode: 'popup'
+    });
+    const area = $('googleSignInButton');
+    area.replaceChildren();
+    google.accounts.id.renderButton(area,{type:'standard',theme:'outline',size:'large',text:'signin_with',shape:'rectangular',locale:'vi'});
+    setStatus('Hãy nhấn “Đăng nhập bằng Google” phía dưới để cấp quyền ghi công việc.', 'warn');
+  }
+  $('syncConnect').onclick=initializeLogin;
+  $('syncRetry').onclick=()=>{
+    if(!endpoint||!identityToken||Date.now()>=expiresAt)
+      return setStatus('Đăng nhập bằng Google trước khi gửi lại thao tác chờ.', 'warn');
     void flush();
   };
-  $('syncRetry').onclick = () => { if(!endpoint || !secret) return setStatus('Nhập URL cổng đồng bộ và khóa rồi nhấn Kết nối trước.', 'warn');void flush(); };
   $('syncAll').onclick=()=>{
     if(!tasks.length)return setStatus('Chưa có công việc để gửi.', 'warn');
     if(!confirm('Gửi '+tasks.length+' công việc đang lưu trên trình duyệt sang Google Sheets? Các mã ID trùng sẽ được cập nhật.'))return;
@@ -141,7 +179,8 @@
     setStatus('Đã đưa công việc vào hàng đợi đồng bộ.');
   };
   $('syncEndpoint').value=endpoint;
-  setStatus(endpoint? 'Cần nhập lại khóa kết nối để xác nhận đồng bộ.' :
-    'Chưa kết nối GAS. Công việc hiện lưu cục bộ.', 'warn');
-  if(queue.length) setStatus('Có thao tác chưa được GAS xác nhận. Kết nối để gửi lại.', 'warn');
+  $('syncClientId').value=clientId;
+  setStatus(endpoint? 'Chưa đăng nhập Google. Nhập OAuth Client ID và đăng nhập để đồng bộ.' :
+    'Chưa thiết lập Google OAuth Client ID. Công việc hiện lưu cục bộ.', 'warn');
+  if(queue.length) setStatus('Có thao tác chưa được GAS xác nhận. Đăng nhập Google để gửi lại.', 'warn');
 })();
