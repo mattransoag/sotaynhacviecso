@@ -31,27 +31,27 @@ function zrVerifyGoogleIdentity_(raw,cfg){
   var credential=String(raw||'');
   if(credential.length<100||credential.length>5000||
       !/^[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+$/.test(credential))
-    throw new Error('Google ID token không hợp lệ.');
+    throw new Error('AUTH_TOKEN_FORMAT');
   var resp=UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo',{
     method:'post',contentType:'application/x-www-form-urlencoded',
     payload:'id_token='+encodeURIComponent(credential),muteHttpExceptions:true,
     followRedirects:false
   });
-  if(resp.getResponseCode()!==200)throw new Error('Phiên Google hết hạn hoặc token không hợp lệ.');
+  if(resp.getResponseCode()!==200)throw new Error('AUTH_TOKENINFO_REJECTED');
   var token=JSON.parse(resp.getContentText());
   var now=Math.floor(Date.now()/1000);
   if(String(token.aud||'')!==cfg.clientId||
      ['accounts.google.com','https://accounts.google.com'].indexOf(String(token.iss||''))<0||
      !(token.email_verified===true||token.email_verified==='true')||
      !token.sub||!Number(token.exp)||Number(token.exp)<=now)
-    throw new Error('Google ID token không đạt kiểm tra bảo mật.');
+    throw new Error('AUTH_CLAIMS_INVALID');
   var email=String(token.email||'').toLowerCase();
   if(cfg.sub) {
-    if(String(token.sub)!==cfg.sub)throw new Error('Tài khoản Google không được cấp quyền.');
+    if(String(token.sub)!==cfg.sub)throw new Error('AUTH_SUB_DENIED');
   } else {
     // Email ngoài Gmail/Workspace có thể thay đổi quyền sở hữu sau khi được xác minh.
     if(email!==cfg.email || !(email.endsWith('@gmail.com') || !!token.hd))
-      throw new Error('Cần đăng nhập đúng tài khoản Gmail/Workspace được cấp phép; với email khác hãy cấu hình ZR_ALLOWED_SUB.');
+      throw new Error('AUTH_EMAIL_DENIED');
   }
   return {sub:String(token.sub),email:email};
 }
@@ -138,6 +138,8 @@ function doPost(e){
       SHEETS:'Không mở được Google Sheets hoặc cấu trúc bảng CongViec chưa đúng.',
       WRITE:'Không ghi được công việc vào Google Sheets.'
     };
-    return zrReply_(req,false,'Lưu thất bại ['+stage+']. '+(hints[stage]||'Kiểm tra dự án GAS.'));
+    var safeAuthCodes = ['AUTH_TOKEN_FORMAT','AUTH_TOKENINFO_REJECTED','AUTH_CLAIMS_INVALID','AUTH_SUB_DENIED','AUTH_EMAIL_DENIED'];
+    var code = stage === 'GOOGLE_AUTH' && safeAuthCodes.indexOf(String(ex && ex.message || '')) >= 0 ? String(ex.message) : stage;
+    return zrReply_(req,false,'Lưu thất bại ['+code+']. '+(hints[stage]||'Kiểm tra dự án GAS.'));
   }
 }
