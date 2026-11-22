@@ -17,7 +17,8 @@ var ZR_CONFIG = {
   tz: 'Asia/Ho_Chi_Minh',
   site: 'https://script.google.com/macros/s/AKfycbxQmhI6Wv7UXuSQu_hfbpZjqqC2hLifiQcRrKdxhy75UM1Qw97n4NMyIfkaQHaMuEabLw/exec',
   beforeMinutes: 60,
-  overdueHours: 24
+  overdueHours: 24,
+  reminderGraceMinutes: 3
 };
 function zrSetting_(name, fallback) {
   return PropertiesService.getScriptProperties().getProperty(name) || fallback || '';
@@ -86,6 +87,30 @@ function zrSheet_() {
   if (!sheet) throw new Error('Không thấy sheet ' + sheetName + '. Chỉnh TASK_SHEET_NAME.');
   return sheet;
 }
+/** Mốc hỗ trợ: mặc định 60 phút cho công việc cũ, không ghi đè dữ liệu. */
+function zrParseRemindMinutes_(value){
+  var raw=Array.isArray(value)?value:String(value==null?'':value).split(',');
+  if(!raw.length||(raw.length===1&&String(raw[0]).trim()===''))return [60];
+  var allowed=[1,2,5,10,15,30,60,1440];
+  return Array.from(new Set(raw.map(function(x){return Number(String(x).trim());})
+    .filter(function(x){return allowed.indexOf(x)!==-1;}))).sort(function(a,b){return b-a;});
+}
+function zrZaloEnabled_(value){
+  if(value===false)return false;
+  return !['false','0','không','tat','tắt','off'].includes(String(value==null?'':value).trim().toLowerCase());
+}
+function zrSentMarks_(value,due){
+  var expected=String(due.getTime())+':';
+  return String(value||'').split('|').filter(function(item){return item.indexOf(expected)===0;});
+}
+function zrReminderLog_(task,stage,result){
+  try{
+    var book=zrSheet_().getParent();
+    var sheet=book.getSheetByName('NhatKyNhac');
+    if(!sheet){sheet=book.insertSheet('NhatKyNhac');sheet.appendRow(['Thời gian','ID công việc','Công việc','Mốc','Kết quả']);}
+    sheet.appendRow([new Date(),task.id,task.title,stage,result]);
+  }catch(e){Logger.log('Không ghi được nhật ký nhắc việc: '+String(e.message||e).slice(0,100));}
+}
 function zrTasks_() {
   var values = zrSheet_().getDataRange().getValues();
   if (values.length < 2) return [];
@@ -95,15 +120,22 @@ function zrTasks_() {
     id: col('TASK_HEADER_ID', 'ID'),
     title: col('TASK_HEADER_TITLE', 'Công việc'),
     due: col('TASK_HEADER_DUE', 'Hạn hoàn thành'),
-    status: col('TASK_HEADER_STATUS', 'Trạng thái')
+    status: col('TASK_HEADER_STATUS', 'Trạng thái'),
+    reminder: heads.indexOf('nhắc trước (phút)'),
+    enabled: heads.indexOf('bật nhắc zalo'),
+    sent: heads.indexOf('đã nhắc các mốc')
   };
-  if (Object.keys(ix).some(function (k) {return ix[k] < 0;})) {
+  if (['id','title','due','status'].some(function(k){return ix[k]<0;})) {
     throw new Error('Không khớp tiêu đề cột. Cần các cột: ID, Công việc, Hạn hoàn thành, Trạng thái hoặc cấu hình TASK_HEADER_*.');
   }
   return values.slice(1).map(function (r, index) {
     return { id: String(r[ix.id] || 'R' + (index + 2)).trim(),
       title: String(r[ix.title] || '').trim(),
-      due: r[ix.due], status: String(r[ix.status] || '').trim().toLowerCase() };
+      due: r[ix.due], status: String(r[ix.status] || '').trim().toLowerCase(),
+      rowNumber:index+2,
+      remindMinutes:zrParseRemindMinutes_(ix.reminder<0?'':r[ix.reminder]),
+      zaloEnabled:zrZaloEnabled_(ix.enabled<0?'':r[ix.enabled]),
+      sent:ix.sent<0?'':String(r[ix.sent]||''), sentColumn:ix.sent+1 };
   }).filter(function (t) {return t.title;});
 }
 function zrDate_(value) {
@@ -129,40 +161,67 @@ function zrSendTask_(task, title) {
     '\n🔗 Mở phần mềm: ' + appUrl;
   zrRequest_('sendMessage', {chat_id: zrSetting_('ZALO_CHAT_ID'), text: text.slice(0, 1950)});
 }
-/** Kiểm tra thủ công hoặc chạy 15 phút/lần bằng trigger. */
+/**
+ * V3: quét 1 phút/lần, chỉ gửi trong cửa sổ mốc được chọn.
+ * Mốc đã gửi được đánh dấu bằng due timestamp + mốc trong Sheet, tránh lặp.
+ * Công việc cũ chưa có cột mới mặc định được nhắc 60 phút.
+ */
 function zrCheckReminders() {
-  if (!zrSetting_('ZALO_CHAT_ID')) throw new Error('Chưa có ZALO_CHAT_ID');
-  var lock = LockService.getScriptLock();
-  if (!lock.tryLock(5000)) return;
-  try {
-    var now = Date.now();
-    var props = PropertiesService.getScriptProperties();
-    zrTasks_().forEach(function (task) {
-      if (zrFinished_(task.status)) return;
-      var due = zrDate_(task.due).getTime();
-      if (!Number.isFinite(due)) return;
-      var upcoming = due >= now && due <= now + ZR_CONFIG.beforeMinutes * 60000;
-      var overdue = due < now && now - due <= ZR_CONFIG.overdueHours * 3600000;
-      if (!upcoming && !overdue) return;
-      var stage = upcoming ? 'soon' : 'overdue';
-      // Chống lặp theo ID, hạn và giai đoạn, không lưu token trong khóa
-      var key = 'zr_' + Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,
-        task.id + '|' + due + '|' + stage).map(function (n) {return ('0' + (n & 255).toString(16)).slice(-2);}).join('').slice(0, 32);
-      if (props.getProperty(key)) return;
-      zrSendTask_(task, upcoming ? '⏰ NHẮC CÔNG VIỆC SẮP ĐẾN HẠN' : '⚠️ CÔNG VIỆC QUÁ HẠN');
-      props.setProperty(key, String(now));
+  if(zrSetting_('ZR_REMINDER_ENABLED','true')==='false')return;
+  if(!zrSetting_('ZALO_CHAT_ID'))throw new Error('Chưa có ZALO_CHAT_ID');
+  var lock=LockService.getScriptLock();
+  if(!lock.tryLock(10000))return;
+  try{
+    var sheet=zrSheet_();
+    // Lần đầu triển khai V3 tự bổ sung 3 cột ở cuối (không đổi 9 cột cũ).
+    if(typeof zrEnsureV3Columns_==='function')zrEnsureV3Columns_(sheet);
+    var now=Date.now();
+    zrTasks_().forEach(function(task){
+      if(zrFinished_(task.status)||!task.zaloEnabled)return;
+      var due=zrDate_(task.due);
+      if(isNaN(due.getTime()))return;
+      var dueMs=due.getTime();
+      var sent=zrSentMarks_(task.sent,due);
+      var stage='',mark='';
+      // Các mốc được xét theo thứ tự từ lớn đến nhỏ.
+      // Không gửi bù mốc đã lỡ quá 3 phút, tránh gửi hàng loạt khi mới bật trigger.
+      for(var i=0;i<task.remindMinutes.length;i++){
+        var minutes=task.remindMinutes[i];
+        var target=dueMs-minutes*60000;
+        var key=dueMs+':'+minutes;
+        if(now>=target && now<target+ZR_CONFIG.reminderGraceMinutes*60000 &&
+            now<dueMs && sent.indexOf(key)<0){
+          mark=key;stage='Trước hạn '+minutes+' phút';break;
+        }
+      }
+      // Giữ cảnh báo quá hạn riêng, trong 3 phút đầu sau hạn để tránh báo muộn hàng giờ.
+      if(!mark && now>=dueMs && now<dueMs+ZR_CONFIG.reminderGraceMinutes*60000 &&
+         sent.indexOf(dueMs+':overdue')<0){
+        mark=dueMs+':overdue';stage='Quá hạn';
+      }
+      if(!mark)return;
+      try{
+        zrSendTask_(task,stage==='Quá hạn'?'⚠️ CÔNG VIỆC QUÁ HẠN':'⏰ NHẮC '+stage.toUpperCase());
+        if(task.sentColumn>0){
+          var marks=sent.concat([mark]).join('|');
+          sheet.getRange(task.rowNumber,task.sentColumn).setValue(marks);
+        }
+        zrReminderLog_(task,stage,'Zalo API đã nhận');
+      }catch(e){
+        zrReminderLog_(task,stage,'Lỗi gửi Zalo: '+String(e.message||e).slice(0,140));
+        throw e;
+      }
     });
-  } finally { lock.releaseLock(); }
+  }finally{lock.releaseLock();}
 }
-/** Chạy một lần; không tạo trigger trùng. */
+/** Cài một trigger 1 phút, xóa trigger cũ cùng hàm do tài khoản này tạo. */
 function zrInstallTrigger() {
-  ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (t.getHandlerFunction() === 'zrCheckReminders') ScriptApp.deleteTrigger(t);
+  ScriptApp.getProjectTriggers().forEach(function(t){
+    if(t.getHandlerFunction()==='zrCheckReminders')ScriptApp.deleteTrigger(t);
   });
-  ScriptApp.newTrigger('zrCheckReminders').timeBased().everyMinutes(5).create();
-  Logger.log('Đã cài trigger zrCheckReminders mỗi 5 phút.');
+  ScriptApp.newTrigger('zrCheckReminders').timeBased().everyMinutes(1).create();
+  Logger.log('Đã cài kiểm tra nhắc việc mỗi 1 phút.');
 }
-
 
 /**
  * Chẩn đoán nhắc việc không gửi Zalo, KHÔNG gửi tin và không đổi dữ liệu.
