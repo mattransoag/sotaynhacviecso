@@ -1,5 +1,8 @@
 # Cổng đồng bộ GitHub Pages → Google Sheets → Zalo Bot
 
+> **HƯỚNG DẪN CŨ (KHÓA CHIA SẺ):** Mã `Code.gs` hiện tại đã được nâng cấp sang **đăng nhập Google** và không sử dụng `ZR_INGRESS_KEY` nữa. Vui lòng làm theo [SETUP_GOOGLE_LOGIN.md](SETUP_GOOGLE_LOGIN.md), không thực hiện các bước khóa chia sẻ bên dưới.
+
+
 **Trạng thái:** Mã nguồn đã có trên GitHub, **chưa cài vào tài khoản Google của bạn**. Cần làm các bước dưới đây để công việc nhập trên GitHub Pages được lưu vào Google Sheets.
 
 ## Vì sao phải tạo dự án GAS RIÊNG?
