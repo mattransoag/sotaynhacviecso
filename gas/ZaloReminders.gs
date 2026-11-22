@@ -15,7 +15,7 @@
  */
 var ZR_CONFIG = {
   tz: 'Asia/Ho_Chi_Minh',
-  site: 'https://script.google.com/macros/s/AKfycbyG7h14b6gJJYL_8n3O9c6jhQj5NeRDlMesLLBO8HA3YecLUpfsdLKGjop1sruoWdAh/exec',
+  site: 'https://script.google.com/macros/s/AKfycbxQmhI6Wv7UXuSQu_hfbpZjqqC2hLifiQcRrKdxhy75UM1Qw97n4NMyIfkaQHaMuEabLw/exec',
   beforeMinutes: 60,
   overdueHours: 24
 };
@@ -124,8 +124,9 @@ function zrFinished_(status) {
 }
 function zrSendTask_(task, title) {
   var when = Utilities.formatDate(zrDate_(task.due), ZR_CONFIG.tz, 'dd/MM/yyyy HH:mm');
+  var appUrl = zrSetting_('ZR_APP_URL', ZR_CONFIG.site);
   var text = title + '\n📌 ' + task.title + '\n🗓 Hạn: ' + when +
-    '\n🔗 Mở phần mềm: ' + ZR_CONFIG.site;
+    '\n🔗 Mở phần mềm: ' + appUrl;
   zrRequest_('sendMessage', {chat_id: zrSetting_('ZALO_CHAT_ID'), text: text.slice(0, 1950)});
 }
 /** Kiểm tra thủ công hoặc chạy 15 phút/lần bằng trigger. */
@@ -158,8 +159,8 @@ function zrInstallTrigger() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === 'zrCheckReminders') ScriptApp.deleteTrigger(t);
   });
-  ScriptApp.newTrigger('zrCheckReminders').timeBased().everyMinutes(15).create();
-  Logger.log('Đã cài trigger zrCheckReminders mỗi 15 phút.');
+  ScriptApp.newTrigger('zrCheckReminders').timeBased().everyMinutes(5).create();
+  Logger.log('Đã cài trigger zrCheckReminders mỗi 5 phút.');
 }
 
 
