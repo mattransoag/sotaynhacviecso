@@ -51,13 +51,14 @@ function zrDashboardDiagnostic() {
     try {
       var me = zrRequest_('getMe', {});
       info.bot = 'ok';
-      info.botName = String(me && (me.name || me.username || me.first_name) || 'Bot hợp lệ');
+      info.botName = String(me && (me.account_name || me.name || me.username || me.first_name) || 'Không có tên');
+      info.botId = String(me && me.id || '');
     } catch(e) {info.bot = 'error: ' + String(e.message || e).slice(0,160);}
     try {
       var w = zrRequest_('getWebhookInfo', {});
       info.webhook = w && w.url ? 'configured' : 'none';
       // Chỉ hiển thị có/không, không phơi bày URL webhook.
-    } catch(e) {info.webhook = 'unknown: ' + String(e.message || e).slice(0,130);}
+    } catch(e) {info.webhook = /Not Found/i.test(String(e.message || e)) ? 'API không hỗ trợ kiểm tra (Not Found)' : 'unknown: ' + String(e.message || e).slice(0,130);}
     return info;
   });
 }
