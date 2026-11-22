@@ -46,10 +46,10 @@ function zrDashboardCollectChat() {
     // Không gọi deleteWebhook hay setWebhook: tránh ảnh hưởng bot hiện tại.
     var result;
     try {
-      result = zrRequest_('getUpdates', {timeout: '1'});
+      result = zrRequest_('getUpdates', {timeout: '20'});
     } catch(e) {
       var msg = String(e.message || e);
-      if (/Request timeout|timeout/i.test(msg)) return {found:false, message:'Chưa có tin nhắn mới. Nhắn /start hoặc CHAO cho bot rồi thử lại. Nếu bot có webhook, hãy dùng Chat ID đã biết.'};
+      if (/Request timeout|timeout/i.test(msg)) return {found:false, message:'Không nhận được tin nhắn trong 20 giây. Hãy bấm Tìm Chat ID, rồi ngay khi nút đang xử lý gửi tin nhắn MALOI vào bot. Nếu vẫn trống, kiểm tra webhook hoặc endpoint API.'};
       throw e;
     }
     var updates = Array.isArray(result) ? result : (result ? [result] : []);
