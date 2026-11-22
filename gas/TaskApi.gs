@@ -137,3 +137,52 @@ function zrTaskManagerView(){
   return HtmlService.createHtmlOutputFromFile('TaskManagerUI')
     .setTitle('Sổ tay nhắc việc số — Đồng bộ Google Sheets');
 }
+
+
+/** Trạng thái kết nối an toàn, không bao giờ trả về token/chat ID. */
+function zrApiReminderStatus() {
+  zrTasksAuth_();
+  var p=PropertiesService.getScriptProperties();
+  var tokenSet=!!p.getProperty('ZALO_BOT_TOKEN');
+  var chatSet=!!p.getProperty('ZALO_CHAT_ID');
+  var triggers=ScriptApp.getProjectTriggers().filter(function(t) {
+    return t.getHandlerFunction()==='zrCheckReminders';
+  });
+  var sheetOk=false,rows=0,eligible=0,unreadable='';
+  try {
+    var sheet=zrSheet_();sheetOk=true;
+    var tasks=zrTasks_(),now=Date.now();
+    rows=tasks.length;
+    tasks.forEach(function(task){
+      if(zrFinished_(task.status))return;
+      var due=zrDate_(task.due).getTime();
+      if(Number.isFinite(due) && ((due>=now&&due<=now+ZR_CONFIG.beforeMinutes*60000) ||
+          (due<now&&now-due<=ZR_CONFIG.overdueHours*3600000)))eligible++;
+    });
+  }catch(ex){unreadable=String(ex.message||ex).slice(0,150)}
+  return {
+    tokenConfigured:tokenSet,chatConfigured:chatSet,
+    triggerCount:triggers.length, sheetConnected:sheetOk,
+    taskCount:rows, eligibleCount:eligible, sheetError:unreadable,
+    checkFrequencyNote:'Tần suất thực tế kiểm tra trong mục Trình kích hoạt của Apps Script.',
+    beforeMinutes:ZR_CONFIG.beforeMinutes
+  };
+}
+/** Gửi tin thử theo tài khoản đã cấu hình. Không tiết lộ ID người nhận. */
+function zrApiReminderSendTest() {
+  zrTasksAuth_();
+  zrSendTest();
+  return {ok:true,message:'Đã gọi Zalo API gửi tin thử. Hãy kiểm tra tài khoản Zalo nhận tin.'};
+}
+/** Thiết lập lịch kiểm tra 5 phút, xóa trigger cùng tên do chính tài khoản tạo. */
+function zrApiReminderInstallFiveMinutes() {
+  zrTasksAuth_();
+  if(!zrSetting_('ZALO_BOT_TOKEN')||!zrSetting_('ZALO_CHAT_ID'))
+    throw new Error('Cần cấu hình Bot Token và Chat ID trước khi bật nhắc việc.');
+  zrSheet_();
+  ScriptApp.getProjectTriggers().filter(function(t){
+    return t.getHandlerFunction()==='zrCheckReminders';
+  }).forEach(function(t){ScriptApp.deleteTrigger(t)});
+  ScriptApp.newTrigger('zrCheckReminders').timeBased().everyMinutes(5).create();
+  return {ok:true,message:'Đã cài lịch kiểm tra công việc mỗi 5 phút cho tài khoản này.'};
+}
