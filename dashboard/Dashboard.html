@@ -82,12 +82,7 @@
   function el(id){return document.getElementById(id)}
   function setText(id,value){el(id).textContent=String(value)}
   function toast(msg){const e=el('toast');e.textContent=msg;e.style.display='block';setTimeout(()=>e.style.display='none',4500)}
-  function call(name,args,ok,button){
-    if(button)button.disabled=true;
-    google.script.run.withSuccessHandler(result=>{if(button)button.disabled=false;ok(result)}).withFailureHandler(err=>{if(button)button.disabled=false;toast('Lỗi: '+err.message);}).[name](...args);
-  }
-  // google.script.run không hỗ trợ truy cập động bằng cú pháp `.[name]` trong mọi môi trường;
-  // gọi bằng thuộc tính động để giữ tên hàm từ whitelist cục bộ.
+  // Các hàm phía máy chủ chỉ được gọi từ danh sách cho phép.
   function call(name,args,ok,button){
     const allowed=['zrDashboardStatus','zrDashboardTestBot','zrDashboardCollectChat','zrDashboardSaveChatId','zrDashboardTestSend','zrDashboardTasksPreview'];
     if(!allowed.includes(name)) return;
