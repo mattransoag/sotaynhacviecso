@@ -99,7 +99,14 @@ function zrDiagnoseIngressConfig() {
     });
     var status=response.getResponseCode();
     Logger.log('GOOGLE_TOKENINFO_NETWORK: '+(status===400||status===401?'OK':('HTTP_'+status)));
-  }catch(e){Logger.log('GOOGLE_TOKENINFO_NETWORK: FETCH_FAILED');}
+  }catch(e){
+    // Lời gọi chẩn đoán chỉ gửi token giả cố định; không bao giờ log token thật.
+    var diagnostic=String(e && e.message || 'Unknown error')
+      .replace(/https?:\/\/[^\s]+/g,'[URL]')
+      .slice(0,350);
+    Logger.log('GOOGLE_TOKENINFO_NETWORK: FETCH_FAILED');
+    Logger.log('FETCH_EXCEPTION: '+diagnostic);
+  }
 }
 function doPost(e){
   var req='',action='',taskId='',stage='CONFIG';
