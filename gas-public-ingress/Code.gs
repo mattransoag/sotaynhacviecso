@@ -31,7 +31,11 @@ function zrReply_(id,ok,message){
   var html='<!doctype html><meta charset="utf-8"><script>window.top.postMessage('+
     result+', "https://mattransoag.github.io");</script><p>'+
     (ok?'Đã tiếp nhận công việc.':'Không thể tiếp nhận công việc.')+'</p>';
-  return HtmlService.createHtmlOutput(html).setTitle('Kết quả đồng bộ');
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Kết quả đồng bộ')
+    // Chỉ trang phản hồi ngắn này được phép nhúng iframe từ GitHub Pages.
+    // Không chứa mã truy cập Sheets, key hoặc dữ liệu nhạy cảm.
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 function doPost(e){
   var req='',action='',taskId='';
