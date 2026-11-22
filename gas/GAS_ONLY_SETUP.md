@@ -9,6 +9,36 @@
 - Script Properties trong GAS chính: `ZALO_BOT_TOKEN`, `ZALO_CHAT_ID`, `SPREADSHEET_ID`, `TASK_SHEET_NAME` (mặc định `CongViec`). Không chuyển token ra GitHub hoặc HTML.
 - GAS cổng công khai `CONG DONG BO SO TAY NHAC VIEC` chỉ cần khi vẫn muốn dùng trang GitHub Pages. Nếu bỏ GitHub Pages, ngừng sử dụng và vô hiệu hóa các deployment công khai **sau khi** xác nhận GAS chính vận hành ổn định.
 
+## Dùng đúng MỘT WEBSITE GAS và đổi bot trên giao diện
+
+Phiên bản mới đưa **Quản lý công việc + cấu hình bot Zalo** vào cùng trang `TaskManagerUI.html`. Bạn không cần web GitHub Pages, OAuth Client ID hay khóa `ZR_INGRESS_KEY` cho luồng sử dụng hằng ngày.
+
+**Để đường dẫn `/exec` mở thẳng trang chính**, tìm hàm `doGet(e)` đang có trong tệp `Dashboard.gs` của **dự án GAS chính**. **Thay nguyên hàm đó (không tạo thêm hàm doGet)** bằng đoạn sau:
+
+```javascript
+function doGet(e) {
+  if (e && e.parameter && e.parameter.page === 'dashboard') {
+    return zrDashboardView();
+  }
+  // /exec và /exec?page=tasks đều mở trang GAS duy nhất để làm việc
+  return zrTaskManagerView();
+}
+```
+
+Tệp `TaskManagerUI.html` nay chứa cả danh sách công việc, trạng thái Zalo và khu vực **Đổi Zalo Bot ngay trên website**. Dashboard kỹ thuật trước đây vẫn có thể mở từ `?page=dashboard` để quản trị, nhưng không cần dùng hằng ngày.
+
+**Trước khi triển khai**, tại `Project Settings → Script Properties` của dự án **HE THONG NHAC VIEC SO**, đảm bảo:
+- `ZR_ADMIN_EMAIL`: email của chủ tài khoản quản trị truy cập web GAS, dùng để bảo vệ quyền đổi Bot Token
+- `ZALO_BOT_TOKEN`: Bot Token bot hiện tại
+- `ZALO_CHAT_ID`: Chat ID hiện tại
+- `SPREADSHEET_ID`: ID Sheets chung của dự án GAS quản lý (phải trùng bảng nhận từ GitHub cũ nếu muốn giữ dữ liệu)
+
+Để thay bot: vào web `/exec` → **Kết nối Zalo và Google Sheets** → điền **Bot Token mới** + **Chat ID mới** → **Kiểm tra và đổi bot**. GAS gửi tin thử **trước khi lưu**; lỗi thì cấu hình cũ vẫn được giữ nguyên. Không gửi token qua chat hoặc ảnh. Bot mới chỉ nhắn được cho tài khoản đã bắt đầu hội thoại với bot và được nền tảng cho phép gửi tin.
+
+Quyền của web GAS **Chỉ mình tôi**. Không triển khai dự án quản trị bot với **Anyone**, vì chức năng ghi trực tiếp Google Sheets và cập nhật Bot Token không được mở công khai. Sau khi cập nhật `TaskApi.gs`, `TaskManagerUI.html` và `doGet(e)`, chọn triển khai **Phiên bản mới**.
+
+**Chưa có công cụ kết nối trực tiếp để chỉnh dự án GAS trong tài khoản của bạn**; mã đã cập nhật trên GitHub và cần được dán vào dự án GAS hiện hữu.
+
 ## 1. Cập nhật 2 tệp trong dự án GAS chính
 
 1. Mở [TaskApi.gs](../gas/TaskApi.gs), sao chép **toàn bộ mã** vào tệp cùng tên đang có của dự án `HE THONG NHAC VIEC SO`.
