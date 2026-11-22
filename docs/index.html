@@ -86,21 +86,22 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
     <div id="boardPanel" class="kanban" hidden></div><div id="empty" class="empty">Bạn chưa có công việc nào. Hãy thêm một công việc để bắt đầu ✨</div>
   </section>
   <section class="card section" id="connect">
- <div class="head"><div><h2>🔗 Đồng bộ Google Sheets → Zalo</h2><p>Kết nối cổng ghi công việc riêng để bot nhận đúng thời hạn.</p></div></div>
- <div class="notice"><strong>Bảo mật:</strong> cần một cổng Apps Script riêng chỉ nhận dữ liệu có khóa kết nối. <strong>Không dùng Bot Token làm khóa này</strong>. Trang GitHub vẫn lưu bản cục bộ. Việc nhắc Zalo chỉ hoạt động sau khi GAS nhận dữ liệu và trigger nhắc việc đã được bật.</div>
+ <div class="head"><div><h2>🔐 Đăng nhập Google · Đồng bộ Google Sheets → Zalo</h2><p>Đăng nhập bằng tài khoản Google được cấp quyền, không cần nhập khóa kết nối dài.</p></div></div>
+ <div class="notice"><strong>Bảo mật:</strong> Google xác thực tài khoản khi bạn đăng nhập; GAS kiểm tra ID token và danh sách tài khoản được phép. Website GitHub chỉ lưu OAuth Client ID công khai và URL cổng, không lưu mật khẩu, Bot Token hoặc ID token Google. Khi phiên hết hạn, bạn cần đăng nhập lại.</div>
  <div class="fields" style="margin-top:16px">
-  <div class="field wide"><label class="field-label" for="syncEndpoint">URL cổng nhận công việc GAS riêng (/exec)</label>
+  <div class="field wide"><label class="field-label" for="syncEndpoint">URL cổng ghi công việc GAS riêng (/exec)</label>
     <input id="syncEndpoint" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off"></div>
-  <div class="field wide"><label class="field-label" for="syncSecret">Khóa kết nối cổng đồng bộ (ít nhất 32 ký tự)</label>
-    <input id="syncSecret" type="password" placeholder="Chỉ nhập khi kết nối, không lưu vào GitHub" autocomplete="off"></div>
+  <div class="field wide"><label class="field-label" for="syncClientId">Google OAuth 2.0 Web Client ID (không phải Client Secret)</label>
+    <input id="syncClientId" placeholder="123456789-xxxxx.apps.googleusercontent.com" autocomplete="off"></div>
  </div>
- <div class="form-actions"><button type="button" id="syncConnect" class="btn primary">🔒 Kết nối đồng bộ</button>
+ <div class="form-actions"><button type="button" id="syncConnect" class="btn primary">⚙️ Thiết lập đăng nhập Google</button>
  <button type="button" id="syncRetry" class="btn">↻ Gửi lại thao tác chờ</button>
  <button type="button" id="syncAll" class="btn">↑ Gửi toàn bộ công việc đang có</button></div>
- <p class="message" id="syncStatus" role="status" aria-live="polite">Chưa kết nối.</p>
- <p class="message">Đã gửi yêu cầu không đồng nghĩa đã lưu. Chỉ khi có thông báo <strong>“GAS đã xác nhận lưu”</strong> mới coi là đồng bộ thành công. Nếu không có xác nhận, hãy kiểm tra cổng GAS, trình duyệt và bảng Sheets.</p>
+ <div id="googleSignInButton" style="margin-top:14px;min-height:8px"></div>
+ <p class="message" id="syncStatus" role="status" aria-live="polite">Cần đăng nhập bằng Google.</p>
+ <p class="message">Đăng nhập Google chỉ xác nhận danh tính trên trình duyệt. Chỉ khi GAS thông báo <strong>“GAS đã xác nhận lưu”</strong> mới coi là đồng bộ thành công. Bot Zalo chỉ nhắc khi trigger riêng đã hoạt động.</p>
  <div class="form-actions"><a class="btn" href="https://script.google.com/macros/s/AKfycbyG7h14b6gJJYL_8n3O9c6jhQj5NeRDlMesLLBO8HA3YecLUpfsdLKGjop1sruoWdAh/exec?page=tasks" target="_blank" rel="noopener noreferrer">Mở quản lý công việc GAS</a>
- <a class="btn" href="https://github.com/mattransoag/sotaynhacviecso/blob/main/gas-public-ingress/SETUP.md" target="_blank" rel="noopener noreferrer">Hướng dẫn cài cổng đồng bộ</a></div>
+ <a class="btn" href="https://github.com/mattransoag/sotaynhacviecso/blob/main/gas-public-ingress/SETUP_GOOGLE_LOGIN.md" target="_blank" rel="noopener noreferrer">Hướng dẫn bật đăng nhập Google</a></div>
 </section>
   <footer class="foot">© 2026 Sổ tay nhắc việc số · Thiết kế hiện đại · GitHub Pages</footer>
 </main></div>
@@ -152,8 +153,9 @@ render();
 </script>
 <iframe id="syncFrame" name="zr_sync_target" title="Kênh nhận xác nhận đồng bộ" sandbox="allow-scripts allow-forms allow-same-origin" hidden></iframe>
 <form id="syncTransport" method="POST" target="zr_sync_target" hidden>
- <input name="request_id"><input name="ingress_key" type="password"><input name="action"><input name="task_json">
+ <input name="request_id"><input name="credential" type="password"><input name="action"><input name="task_json">
 </form>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="./sync.js"></script>
 </body>
 </html>
