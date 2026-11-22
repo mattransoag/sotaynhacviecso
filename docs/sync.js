@@ -89,9 +89,13 @@
     if (pending) {clearTimeout(pending.timer); pending = null;}
   }
   async function flush() {
-    if(sending || !endpoint || !secret || !queue.length) {
-      setStatus(!endpoint || !secret ? 'Chưa kết nối. Công việc đang lưu cục bộ; chưa gửi đến Zalo.' :
-        'Không có thao tác đồng bộ đang chờ.', !endpoint || !secret ? 'warn':'');
+    if(sending) return;
+    if(!endpoint || !secret) {
+      setStatus('Chưa kết nối. Công việc đang lưu cục bộ; chưa gửi đến Google Sheets.', 'warn');
+      return;
+    }
+    if(!queue.length) {
+      setStatus('Đã nhập URL và khóa vào phiên này, nhưng CHƯA xác minh kết nối GAS. Hãy tạo một công việc rồi kiểm tra xác nhận lưu.', 'warn');
       return;
     }
     sending = true;
@@ -126,7 +130,7 @@
     endpoint=url;secret=key; // memory only; never persist secret
     $('syncSecret').value='';
     try{localStorage.setItem(ENDPOINT_KEY,url)}catch(_){}
-    setStatus('Đã cấu hình cổng đồng bộ. Đang gửi các thay đổi chưa xác nhận.', 'warn');
+    setStatus(queue.length ? 'Đã nhận cấu hình. Đang thử gửi các thay đổi đang chờ.' : 'Đã nhập cấu hình, nhưng chưa có công việc để kiểm tra kết nối. Hãy thêm một công việc thử.', 'warn');
     void flush();
   };
   $('syncRetry').onclick = () => { if(!endpoint || !secret) return setStatus('Nhập URL cổng đồng bộ và khóa rồi nhấn Kết nối trước.', 'warn');void flush(); };
