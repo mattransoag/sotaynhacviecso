@@ -32,19 +32,30 @@ function zrVerifyGoogleIdentity_(raw,cfg){
   if(credential.length<100||credential.length>5000||
       !/^[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+$/.test(credential))
     throw new Error('AUTH_TOKEN_FORMAT');
-  var resp=UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo',{
-    method:'post',contentType:'application/x-www-form-urlencoded',
-    payload:'id_token='+encodeURIComponent(credential),muteHttpExceptions:true,
-    followRedirects:false
-  });
-  if(resp.getResponseCode()!==200)throw new Error('AUTH_TOKENINFO_REJECTED');
-  var token=JSON.parse(resp.getContentText());
+  var resp;
+  try {
+    resp=UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo',{
+      method:'post',contentType:'application/x-www-form-urlencoded',
+      payload:{id_token:credential},muteHttpExceptions:true,
+      followRedirects:false
+    });
+  } catch(fetchError) {
+    // Không ghi token hoặc lỗi gốc (có thể chứa thông tin riêng tư).
+    throw new Error('AUTH_FETCH_FAILED');
+  }
+  if(resp.getResponseCode()!==200)
+    throw new Error('AUTH_TOKENINFO_HTTP_'+resp.getResponseCode());
+  var token;
+  try { token=JSON.parse(resp.getContentText()); }
+  catch(e){ throw new Error('AUTH_TOKENINFO_JSON'); }
   var now=Math.floor(Date.now()/1000);
-  if(String(token.aud||'')!==cfg.clientId||
-     ['accounts.google.com','https://accounts.google.com'].indexOf(String(token.iss||''))<0||
-     !(token.email_verified===true||token.email_verified==='true')||
-     !token.sub||!Number(token.exp)||Number(token.exp)<=now)
-    throw new Error('AUTH_CLAIMS_INVALID');
+  if(String(token.aud||'')!==cfg.clientId)throw new Error('AUTH_AUD_MISMATCH');
+  if(['accounts.google.com','https://accounts.google.com'].indexOf(String(token.iss||''))<0)
+    throw new Error('AUTH_ISS_INVALID');
+  if(!(token.email_verified===true||token.email_verified==='true'))
+    throw new Error('AUTH_EMAIL_UNVERIFIED');
+  if(!token.sub)throw new Error('AUTH_SUB_MISSING');
+  if(!Number(token.exp)||Number(token.exp)<=now)throw new Error('AUTH_EXPIRED');
   var email=String(token.email||'').toLowerCase();
   if(cfg.sub) {
     if(String(token.sub)!==cfg.sub)throw new Error('AUTH_SUB_DENIED');
@@ -67,6 +78,28 @@ function zrReply_(id,ok,message){
     // Chỉ trang phản hồi ngắn này được phép nhúng iframe từ GitHub Pages.
     // Không chứa mã truy cập Sheets, key hoặc dữ liệu nhạy cảm.
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+/**
+ * Chạy thủ công hàm này trong trình chỉnh sửa cổng GAS.
+ * Kiểm tra cấu hình, quyền Sheets và quyền UrlFetch; không in mã/token/ID.
+ * KHÔNG chạy doPost trực tiếp để kiểm tra.
+ */
+function zrDiagnoseIngressConfig() {
+  var cfg;
+  try { cfg=zrIngressReady_(); Logger.log('CONFIG: OK'); }
+  catch(e){Logger.log('CONFIG: FAIL');return;}
+  try {
+    var sheet=SpreadsheetApp.openById(cfg.id).getSheetByName('CongViec');
+    Logger.log('SHEETS: '+(sheet?'OK':'TAB_MISSING'));
+  }catch(e){Logger.log('SHEETS: ACCESS_FAILED');}
+  try {
+    var response=UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo',{
+      method:'post',contentType:'application/x-www-form-urlencoded',
+      payload:{id_token:'invalid-diagnostic-token'},muteHttpExceptions:true
+    });
+    var status=response.getResponseCode();
+    Logger.log('GOOGLE_TOKENINFO_NETWORK: '+(status===400||status===401?'OK':('HTTP_'+status)));
+  }catch(e){Logger.log('GOOGLE_TOKENINFO_NETWORK: FETCH_FAILED');}
 }
 function doPost(e){
   var req='',action='',taskId='',stage='CONFIG';
@@ -138,8 +171,15 @@ function doPost(e){
       SHEETS:'Không mở được Google Sheets hoặc cấu trúc bảng CongViec chưa đúng.',
       WRITE:'Không ghi được công việc vào Google Sheets.'
     };
-    var safeAuthCodes = ['AUTH_TOKEN_FORMAT','AUTH_TOKENINFO_REJECTED','AUTH_CLAIMS_INVALID','AUTH_SUB_DENIED','AUTH_EMAIL_DENIED'];
-    var code = stage === 'GOOGLE_AUTH' && safeAuthCodes.indexOf(String(ex && ex.message || '')) >= 0 ? String(ex.message) : stage;
+    var safeAuthCodes = [
+      'AUTH_TOKEN_FORMAT','AUTH_FETCH_FAILED','AUTH_TOKENINFO_JSON',
+      'AUTH_AUD_MISMATCH','AUTH_ISS_INVALID','AUTH_EMAIL_UNVERIFIED',
+      'AUTH_SUB_MISSING','AUTH_EXPIRED','AUTH_SUB_DENIED','AUTH_EMAIL_DENIED'
+    ];
+    var reason=String(ex && ex.message || '');
+    var code=stage;
+    if(stage==='GOOGLE_AUTH' && (safeAuthCodes.indexOf(reason)>=0 ||
+        /^AUTH_TOKENINFO_HTTP_[0-9]{3}$/.test(reason)))code=reason;
     return zrReply_(req,false,'Lưu thất bại ['+code+']. '+(hints[stage]||'Kiểm tra dự án GAS.'));
   }
 }
