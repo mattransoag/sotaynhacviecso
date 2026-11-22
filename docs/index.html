@@ -86,9 +86,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
     <div id="boardPanel" class="kanban" hidden></div><div id="empty" class="empty">Bạn chưa có công việc nào. Hãy thêm một công việc để bắt đầu ✨</div>
   </section>
   <section class="card section" id="connect"><div class="head"><div><h2>🔗 Kết nối Zalo và Google Sheets</h2><p>Quản lý cấu hình nhắc việc an toàn ở GAS.</p></div></div>
-    <div class="notice"><strong>Website GitHub Pages là giao diện độc lập.</strong> Dữ liệu nhập trên trang này lưu tại trình duyệt, không tự đồng bộ sang Google Sheets và không kích hoạt bot Zalo. Hãy xuất CSV để nhập thủ công vào Sheets nếu cần. Không nhập Bot Token hoặc thông tin nhạy cảm vào website công khai.</div>
+    <div class="notice"><strong>Hai chế độ sử dụng:</strong> Trang GitHub Pages này vẫn lưu công việc trong trình duyệt. Để ghi trực tiếp vào Google Sheets và dùng dữ liệu cho Zalo Bot nhắc việc, hãy mở <strong>phiên bản đồng bộ chạy trên Google Apps Script</strong> sau khi cài mã TaskApi.gs và TaskManagerUI.html vào GAS.</div>
     <p class="message">Hệ thống Zalo Bot và lịch nhắc việc do Google Apps Script riêng xử lý. Website này không có quyền truy cập Bot Token.</p>
-  </section>
+  <div class="form-actions"><a class="btn primary" href="https://script.google.com/macros/s/AKfycbyG7h14b6gJJYL_8n3O9c6jhQj5NeRDlMesLLBO8HA3YecLUpfsdLKGjop1sruoWdAh/exec?page=tasks" target="_blank" rel="noopener noreferrer">↗ Mở phiên bản đồng bộ Google Sheets</a></div><p class="message">Nếu trang chưa mở được, cần thêm hai tệp TaskApi.gs và TaskManagerUI.html vào GAS, cập nhật doGet(e), rồi triển khai phiên bản GAS mới. Không nhập Bot Token vào GitHub Pages.</p></section>
   <footer class="foot">© 2026 Sổ tay nhắc việc số · Thiết kế hiện đại · GitHub Pages</footer>
 </main></div>
 <script>
