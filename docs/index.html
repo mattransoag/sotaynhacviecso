@@ -85,10 +85,23 @@ input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 
     <div id="tablePanel" class="table-scroll"><table><thead><tr><th>Công việc</th><th>Hạn</th><th>Ưu tiên</th><th>Người phụ trách</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody id="rows"></tbody></table></div>
     <div id="boardPanel" class="kanban" hidden></div><div id="empty" class="empty">Bạn chưa có công việc nào. Hãy thêm một công việc để bắt đầu ✨</div>
   </section>
-  <section class="card section" id="connect"><div class="head"><div><h2>🔗 Kết nối Zalo và Google Sheets</h2><p>Quản lý cấu hình nhắc việc an toàn ở GAS.</p></div></div>
-    <div class="notice"><strong>Hai chế độ sử dụng:</strong> Trang GitHub Pages này vẫn lưu công việc trong trình duyệt. Để ghi trực tiếp vào Google Sheets và dùng dữ liệu cho Zalo Bot nhắc việc, hãy mở <strong>phiên bản đồng bộ chạy trên Google Apps Script</strong> sau khi cài mã TaskApi.gs và TaskManagerUI.html vào GAS.</div>
-    <p class="message">Hệ thống Zalo Bot và lịch nhắc việc do Google Apps Script riêng xử lý. Website này không có quyền truy cập Bot Token.</p>
-  <div class="form-actions"><a class="btn primary" href="https://script.google.com/macros/s/AKfycbyG7h14b6gJJYL_8n3O9c6jhQj5NeRDlMesLLBO8HA3YecLUpfsdLKGjop1sruoWdAh/exec?page=tasks" target="_blank" rel="noopener noreferrer">↗ Mở phiên bản đồng bộ Google Sheets</a></div><p class="message">Nếu trang chưa mở được, cần thêm hai tệp TaskApi.gs và TaskManagerUI.html vào GAS, cập nhật doGet(e), rồi triển khai phiên bản GAS mới. Không nhập Bot Token vào GitHub Pages.</p></section>
+  <section class="card section" id="connect">
+ <div class="head"><div><h2>🔗 Đồng bộ Google Sheets → Zalo</h2><p>Kết nối cổng ghi công việc riêng để bot nhận đúng thời hạn.</p></div></div>
+ <div class="notice"><strong>Bảo mật:</strong> cần một cổng Apps Script riêng chỉ nhận dữ liệu có khóa kết nối. <strong>Không dùng Bot Token làm khóa này</strong>. Trang GitHub vẫn lưu bản cục bộ. Việc nhắc Zalo chỉ hoạt động sau khi GAS nhận dữ liệu và trigger nhắc việc đã được bật.</div>
+ <div class="fields" style="margin-top:16px">
+  <div class="field wide"><label class="field-label" for="syncEndpoint">URL cổng nhận công việc GAS riêng (/exec)</label>
+    <input id="syncEndpoint" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off"></div>
+  <div class="field wide"><label class="field-label" for="syncSecret">Khóa kết nối cổng đồng bộ (ít nhất 32 ký tự)</label>
+    <input id="syncSecret" type="password" placeholder="Chỉ nhập khi kết nối, không lưu vào GitHub" autocomplete="off"></div>
+ </div>
+ <div class="form-actions"><button type="button" id="syncConnect" class="btn primary">🔒 Kết nối đồng bộ</button>
+ <button type="button" id="syncRetry" class="btn">↻ Gửi lại thao tác chờ</button>
+ <button type="button" id="syncAll" class="btn">↑ Gửi toàn bộ công việc đang có</button></div>
+ <p class="message" id="syncStatus" role="status" aria-live="polite">Chưa kết nối.</p>
+ <p class="message">Đã gửi yêu cầu không đồng nghĩa đã lưu. Chỉ khi có thông báo <strong>“GAS đã xác nhận lưu”</strong> mới coi là đồng bộ thành công. Nếu không có xác nhận, hãy kiểm tra cổng GAS, trình duyệt và bảng Sheets.</p>
+ <div class="form-actions"><a class="btn" href="https://script.google.com/macros/s/AKfycbyG7h14b6gJJYL_8n3O9c6jhQj5NeRDlMesLLBO8HA3YecLUpfsdLKGjop1sruoWdAh/exec?page=tasks" target="_blank" rel="noopener noreferrer">Mở quản lý công việc GAS</a>
+ <a class="btn" href="https://github.com/mattransoag/sotaynhacviecso/blob/main/gas-public-ingress/SETUP.md" target="_blank" rel="noopener noreferrer">Hướng dẫn cài cổng đồng bộ</a></div>
+</section>
   <footer class="foot">© 2026 Sổ tay nhắc việc số · Thiết kế hiện đại · GitHub Pages</footer>
 </main></div>
 <script>
@@ -137,5 +150,10 @@ $('json').onclick=()=>download('so-tay-nhac-viec.json',JSON.stringify(tasks,null
 $('fileInput').onchange=async e=>{const file=e.target.files&&e.target.files[0];if(!file)return;try{if(file.size>2e6)throw Error('Tệp vượt quá 2MB');const data=JSON.parse(await file.text());if(!Array.isArray(data)||data.length>5000||!data.every(valid))throw Error('Tệp dữ liệu không hợp lệ');if(confirm('Nhập dữ liệu sẽ thay thế toàn bộ công việc đang lưu trên trình duyệt. Bạn đã sao lưu chưa?')){tasks=data.map(t=>({id:t.id,name:t.name.slice(0,200),due:t.due,priority:String(t.priority||'Trung bình'),owner:String(t.owner||'').slice(0,100),note:String(t.note||'').slice(0,1000),done:!!t.done}));persist();resetEditor();render()}}catch(err){alert(err.message)}e.target.value=''};
 render();
 </script>
+<iframe id="syncFrame" name="zr_sync_target" title="Kênh nhận xác nhận đồng bộ" sandbox="allow-scripts allow-forms allow-same-origin" hidden></iframe>
+<form id="syncTransport" method="POST" target="zr_sync_target" hidden>
+ <input name="request_id"><input name="ingress_key" type="password"><input name="action"><input name="task_json">
+</form>
+<script src="./sync.js"></script>
 </body>
 </html>
