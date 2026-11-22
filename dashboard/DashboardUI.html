@@ -90,8 +90,8 @@
     google.script.run.withSuccessHandler(r=>{if(button)button.disabled=false;ok(r)}).withFailureHandler(e=>{if(button)button.disabled=false;toast('Lỗi: '+e.message)})[name](...args);
   }
   function init(){call('zrDashboardStatus',[],s=>{setText('sToken',s.tokenConfigured?'Đã cấu hình':'Chưa có');el('sToken').className=s.tokenConfigured?'good':'bad';setText('sChat',s.chatId||'Chưa có');setText('sSheet',s.sheet);el('chatInput').value=s.chatId;},null)}
-  function showBot(r){let b=r.bot||{};setText('botResult','✅ Kết nối thành công. '+(b.name||b.username||b.first_name||'Bot trả lời hợp lệ.'))}
-  function showDiagnostic(r){setText('diagnosticResult','Bot: '+r.bot+' | Webhook: '+r.webhook+' | Kiểm tra: '+r.checkedAt)}
+  function showBot(r){let b=r.bot||{};setText('botResult','✅ Kết nối thành công. Tài khoản bot: '+(b.account_name||b.name||b.username||b.first_name||'Không có tên')+' | ID: '+(b.id||'không rõ'))}
+  function showDiagnostic(r){setText('diagnosticResult','Bot: '+r.bot+' | Tài khoản bot: '+(r.botName||'không rõ')+' | Bot ID: '+(r.botId||'không rõ')+' | Webhook: '+r.webhook+' | Kiểm tra: '+r.checkedAt)}
   function showChats(r){
     if(!r.found){setText('chatResult',r.message||'Chưa có Chat ID');return}
     const chats=r.chats||[];
