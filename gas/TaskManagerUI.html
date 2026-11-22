@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0e1f3e">
+<title>Sổ tay nhắc việc số | Google Sheets đồng bộ</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+:root{--bg:#f5f7fb;--surface:#fff;--nav:#101d36;--navtext:#aebcd5;--ink:#17243c;--muted:#718099;--line:#e5ebf4;--blue:#386cf4;--soft:#eff3ff;--shadow:0 6px 24px rgba(19,41,82,.055);--green:#079875;--orange:#e69a32;--red:#e75c67}
+[data-theme="dark"]{--bg:#101829;--surface:#1a263c;--nav:#0b1221;--navtext:#b5c2d9;--ink:#eef3ff;--muted:#a3b0c5;--line:#344259;--blue:#82a3ff;--soft:#243653;--shadow:0 10px 24px rgba(0,0,0,.14)}
+*[hidden]{display:none!important}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input,select,textarea{font:inherit}button{cursor:pointer}a{text-decoration:none;color:inherit}
+.layout{min-height:100vh;display:grid;grid-template-columns:252px minmax(0,1fr)}
+.sidebar{background:var(--nav);color:#fff;padding:29px 17px;display:flex;flex-direction:column;gap:26px}
+.logo{display:flex;align-items:center;gap:12px;font-weight:800;font-size:17px;letter-spacing:-.5px;padding:0 10px}
+.logo-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:linear-gradient(140deg,#477eff,#8d6cf5);box-shadow:0 8px 22px #427eff55;font-size:23px}
+.subbrand{font-size:11px;color:#aebbd2;line-height:1.4;font-weight:500}
+.nav-label{text-transform:uppercase;letter-spacing:1.3px;color:#71829e;font-size:10px;font-weight:800;margin:3px 13px}
+.nav{display:grid;gap:6px}.nav a{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:11px;color:var(--navtext);font-weight:600}
+.nav a.active,.nav a:hover{background:#233b66;color:white}.nav a.active{box-shadow:inset 3px 0 #709dff}
+.nav-icon{font-size:18px;width:22px;text-align:center}.side-bottom{margin-top:auto;background:#1d3153;padding:15px;border-radius:14px;color:#b8c8e2;font-size:12px}.side-bottom strong{color:white}
+.main{min-width:0;padding:29px clamp(18px,3vw,46px) 50px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:27px;flex-wrap:wrap}
+.topbar h1{margin:0;font-weight:800;font-size:27px;letter-spacing:-1px}.topbar p{margin:5px 0 0;color:var(--muted)}
+.top-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.date{color:var(--muted);font-size:12px;font-weight:600;margin-right:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:11px;padding:11px 15px;font-weight:700;transition:.18s ease;white-space:nowrap}
+.btn:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.btn.primary{background:#386cf4;color:#fff;border-color:#386cf4;box-shadow:0 6px 13px #386cf429}
+.btn.ghost{background:transparent}.btn.danger{color:var(--red)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+.hero{display:grid;grid-template-columns:1fr auto;gap:20px;align-items:center;background:linear-gradient(110deg,#183d85,#346de1 68%,#8174f6);color:#fff;padding:25px 29px;border:0;overflow:hidden;position:relative}
+.hero:after{content:"";position:absolute;width:220px;height:220px;border:35px solid #ffffff12;border-radius:50%;right:-70px;top:-110px}.hero h2{margin:0 0 8px;font-size:22px}.hero p{margin:0;opacity:.88;max-width:630px}.hero-visual{font-size:65px;filter:drop-shadow(0 8px 14px #071e6b66);z-index:1}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:18px 0}
+.stat{padding:21px;position:relative;min-height:130px}.stat .symbol{display:grid;place-items:center;border-radius:12px;width:41px;height:41px;font-size:21px;background:var(--soft)}
+.stat .number{font-size:31px;font-weight:800;letter-spacing:-1px;margin-top:7px;line-height:1.2}.stat .meta{font-size:12px;color:var(--muted);font-weight:600}
+.stat.red .symbol{background:#fce9eb;color:var(--red)}.stat.green .symbol{background:#ddf7ed;color:var(--green)}.stat.orange .symbol{background:#fff0db;color:var(--orange)}
+.section{padding:23px;margin-top:18px;scroll-margin-top:25px}
+.head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:17px}.head h2{margin:0;font-size:18px;letter-spacing:-.4px}.head p{margin:3px 0 0;color:var(--muted);font-size:12px}
+.fields{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:15px}.field.wide{grid-column:1/-1}
+label.field-label{display:block;font-weight:700;font-size:12px;margin:0 0 7px}
+input:not([type=file]),textarea,select{background:var(--surface);color:var(--ink);width:100%;padding:12px;border:1px solid var(--line);border-radius:11px;outline:0;min-width:0}
+input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px #386cf420}textarea{min-height:82px;resize:vertical}
+.form-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}.message{font-size:12px;color:var(--muted);margin-top:12px}
+.tools{display:flex;align-items:center;flex-wrap:wrap;gap:10px}.tools input{max-width:220px}.tools select{max-width:168px}.view-switch{display:flex;border:1px solid var(--line);border-radius:11px;overflow:hidden}.view-switch button{border:0;background:var(--surface);padding:11px 13px;color:var(--muted)}.view-switch button.active{background:var(--soft);color:var(--blue);font-weight:700}
+.table-scroll{overflow:auto}table{width:100%;border-collapse:collapse;text-align:left;min-width:660px}th,td{padding:15px 11px;border-bottom:1px solid var(--line)}th{text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-size:10px}td{font-size:12px}tbody tr:hover{background:var(--soft)}
+.task-title{font-size:13px;font-weight:700}.task-note{max-width:350px;color:var(--muted);font-size:11px;margin-top:4px;overflow-wrap:anywhere}
+.chip{display:inline-block;border-radius:50px;padding:5px 9px;background:#eaf1ff;color:#3155c3;font-weight:700;font-size:11px}
+.chip.done{background:#def7ed;color:#077859}.chip.late{background:#ffe6e8;color:#b3263c}.chip.high{background:#fff0da;color:#a05d06}
+.inline-actions{display:flex;gap:5px;flex-wrap:wrap}.inline-actions .btn{padding:6px 9px;font-size:11px}
+.kanban{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.kanban .lane{border-radius:14px;background:var(--bg);border:1px solid var(--line);padding:12px}.kanban h3{margin:5px 3px 14px;font-size:13px}
+.kanban .task{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px;margin:10px 0}.kanban .task p{margin:5px 0;color:var(--muted);font-size:12px}
+.empty{padding:25px;text-align:center;color:var(--muted)}.foot{color:var(--muted);font-size:12px;text-align:center;padding:25px 0 0}
+.notice{border:1px solid #fae1ad;background:#fffaf0;color:#85591c;border-radius:12px;padding:12px 15px;font-size:12px}
+[data-theme=dark] .notice{background:#3b3120;border-color:#77603c;color:#ffdea5}
+#fileInput{display:none}
+@media(max-width:1150px){.layout{grid-template-columns:205px 1fr}.fields{grid-template-columns:1fr 1fr}.stats{grid-template-columns:1fr 1fr}}
+@media(max-width:800px){.layout{display:block}.sidebar{padding:15px;gap:10px}.sidebar .nav{display:flex;flex-wrap:wrap}.sidebar .nav a{padding:9px;font-size:12px}.nav-label,.side-bottom,.subbrand{display:none}.main{padding:22px 16px}.kanban{grid-template-columns:1fr}}
+@media(max-width:520px){.fields,.stats{grid-template-columns:1fr}.hero{grid-template-columns:1fr}.hero-visual{display:none}.topbar h1{font-size:23px}.section{padding:17px}}
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+  <div class="logo"><span class="logo-mark">🔔</span><span>NHẮC VIỆC SỐ<div class="subbrand">ThanhNguyen · Google Sheets</div></span></div>
+  <div><div class="nav-label">Điều hướng</div><nav class="nav"><a href="#overview" class="active"><span class="nav-icon">▦</span>Tổng quan</a><a href="#create"><span class="nav-icon">✚</span>Thêm công việc</a><a href="#tasks"><span class="nav-icon">☷</span>Danh sách</a><a href="#connect"><span class="nav-icon">♧</span>Kết nối Zalo</a></nav></div>
+  <div class="side-bottom"><strong>☑ Không cần AI</strong><br>Dữ liệu công việc lưu trên Google Sheets; Zalo Bot gửi nhắc việc theo lịch.</div>
+</aside>
+<main class="main" id="overview">
+  <div class="topbar"><div><h1>Bảng điều khiển</h1><p>Đồng bộ Google Sheets · Hỗ trợ nhắc việc qua Zalo Bot.</p></div><div class="top-actions"><span class="date" id="today"></span><button class="btn" id="themeToggle" type="button">☾ Chế độ tối</button><a class="btn primary" href="#create">＋ Công việc mới</a></div></div>
+  <section class="hero card"><div><h2>Chào mừng đến Sổ tay nhắc việc số 👋</h2><p>Lập kế hoạch, quản lý tiến độ và theo dõi hạn hoàn thành trên một bảng điều khiển gọn gàng, hiện đại.</p></div><div class="hero-visual">📅</div></section>
+  <section class="stats" aria-label="Thống kê"><div class="card stat"><div class="symbol">📋</div><div class="number" id="total">0</div><div class="meta">Tổng công việc</div></div><div class="card stat orange"><div class="symbol">⏳</div><div class="number" id="open">0</div><div class="meta">Chưa hoàn thành</div></div><div class="card stat red"><div class="symbol">⚠</div><div class="number" id="late">0</div><div class="meta">Đã quá hạn</div></div><div class="card stat green"><div class="symbol">✓</div><div class="number" id="done">0</div><div class="meta">Đã hoàn thành</div></div></section>
+  <section class="card section" id="create"><div class="head"><div><h2>✚ Thêm / chỉnh sửa công việc</h2><p>Nhập thông tin và nhấn Lưu công việc.</p></div></div>
+  <form id="taskForm"><div class="fields">
+    <div class="field"><label class="field-label" for="name">Tên công việc *</label><input id="name" required maxlength="200" placeholder="Ví dụ: Hoàn thành báo cáo tháng"></div>
+    <div class="field"><label class="field-label" for="due">Hạn hoàn thành *</label><input id="due" type="datetime-local" required></div>
+    <div class="field"><label class="field-label" for="priority">Mức độ ưu tiên</label><select id="priority"><option>Cao</option><option selected>Trung bình</option><option>Thấp</option></select></div>
+    <div class="field"><label class="field-label" for="owner">Người phụ trách</label><input id="owner" maxlength="100" placeholder="Tên người phụ trách"></div>
+    <div class="field wide"><label class="field-label" for="note">Ghi chú</label><textarea id="note" maxlength="1000" placeholder="Thêm mô tả hoặc lưu ý quan trọng..."></textarea></div>
+  </div><div class="form-actions"><button class="btn primary" type="submit" id="saveBtn">＋ Lưu công việc</button><button class="btn" type="button" id="cancelEdit" hidden>Hủy chỉnh sửa</button><button class="btn" type="button" id="csv">↓ Xuất CSV</button><button class="btn" type="button" id="json">↓ Sao lưu JSON</button><label class="btn" for="fileInput">↑ Nhập JSON từ bản web cũ</label><input id="fileInput" type="file" accept=".json,application/json"></div></form>
+  <p class="message">Tất cả thay đổi được lưu trực tiếp vào Google Sheets. Bot Zalo có thể sử dụng cùng nguồn dữ liệu khi lịch nhắc việc đã được cài.</p>
+  </section>
+  <section class="card section" id="tasks">
+    <div class="head"><div><h2>Danh sách công việc</h2><p>Tra cứu và theo dõi tiến độ công việc.</p></div><div class="tools"><input id="search" aria-label="Tìm kiếm" placeholder="⌕ Tìm công việc..."><select id="filter" aria-label="Lọc trạng thái"><option value="all">Tất cả trạng thái</option><option value="open">Chưa hoàn thành</option><option value="late">Quá hạn</option><option value="done">Hoàn thành</option></select><select id="priorityFilter" aria-label="Lọc ưu tiên"><option value="all">Mọi ưu tiên</option><option value="Cao">Cao</option><option value="Trung bình">Trung bình</option><option value="Thấp">Thấp</option></select><div class="view-switch"><button type="button" id="tableView" class="active" aria-label="Bảng">☷</button><button type="button" id="boardView" aria-label="Kanban">▦</button></div></div></div>
+    <div id="tablePanel" class="table-scroll"><table><thead><tr><th>Công việc</th><th>Hạn</th><th>Ưu tiên</th><th>Người phụ trách</th><th>Trạng thái</th><th>Thao tác</th></tr></thead><tbody id="rows"></tbody></table></div>
+    <div id="boardPanel" class="kanban" hidden></div><div id="empty" class="empty">Bạn chưa có công việc nào. Hãy thêm một công việc để bắt đầu ✨</div>
+  </section>
+  <section class="card section" id="connect"><div class="head"><div><h2>🔗 Kết nối Zalo và Google Sheets</h2><p>Quản lý cấu hình nhắc việc an toàn ở GAS.</p></div></div>
+    <div class="notice"><strong>Đây là giao diện GAS quản lý công việc đã đăng nhập.</strong> Mọi thay đổi được ghi trực tiếp vào Google Sheets qua API GAS được kiểm soát. Để tự động gửi Zalo, cần lưu Chat ID và bật trigger trong dự án GAS.</div>
+    <p class="message">Token chỉ lưu trong Script Properties. Website này không hiển thị Bot Token.</p>
+  </section>
+  <footer class="foot">© 2026 Sổ tay nhắc việc số · Google Sheets · Google Apps Script</footer>
+</main></div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const THEME='sotaynhacviecso.theme.v1';
+let tasks=[], editing=null, view='table',busy=false;
+try{if(localStorage.getItem(THEME)==='dark')document.documentElement.dataset.theme='dark'}catch(e){}
+$('today').textContent=new Date().toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+function themeLabel(){$('themeToggle').textContent=document.documentElement.dataset.theme==='dark'?'☀ Chế độ sáng':'☾ Chế độ tối'}
+themeLabel();
+$('themeToggle').onclick=()=>{const dark=document.documentElement.dataset.theme==='dark';document.documentElement.dataset.theme=dark?'light':'dark';try{localStorage.setItem(THEME,dark?'light':'dark')}catch(e){}themeLabel()};
+function request(name,...args){
+ const allowed=['zrApiListTasks','zrApiSaveTask','zrApiSetDone','zrApiDeleteTask','zrApiImportTasks'];
+ if(!allowed.includes(name))return Promise.reject(Error('Không cho phép lệnh này'));
+ return new Promise((resolve,reject)=>{
+  google.script.run.withSuccessHandler(resolve).withFailureHandler(e=>reject(Error(e.message||String(e))))[name](...args);
+ });
+}
+function setBusy(on){busy=on;document.querySelectorAll('button').forEach(b=>{if(b.id!=='themeToggle')b.disabled=on})}
+function error(e){alert('Không thể đồng bộ Google Sheets: '+(e.message||e))}
+function dueTime(t){const n=new Date(t.due).getTime();return Number.isFinite(n)?n:Infinity}
+function late(t){return !t.done&&dueTime(t)<Date.now()}
+function dateLabel(s){const d=new Date(s);return Number.isFinite(d.getTime())?d.toLocaleString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'Không hợp lệ'}
+function cell(tr,v){const d=document.createElement('td');d.textContent=String(v??'');tr.append(d)}
+function chip(value,cls){const s=document.createElement('span');s.className='chip '+(cls||'');s.textContent=value;return s}
+function action(text,fn,cls){const b=document.createElement('button');b.type='button';b.className='btn '+(cls||'');b.textContent=text;b.onclick=fn;return b}
+async function updateStatus(t){
+ if(busy)return;setBusy(true);
+ try{await request('zrApiSetDone',t.id,!t.done);await reload()}catch(e){error(e)}finally{setBusy(false)}
+}
+async function removeTask(t){
+ if(busy||!confirm('Xóa công việc này khỏi Google Sheets? Không thể hoàn tác.'))return;
+ setBusy(true);try{await request('zrApiDeleteTask',t.id);await reload()}catch(e){error(e)}finally{setBusy(false)}
+}
+function actionsFor(t){const w=document.createElement('div');w.className='inline-actions';w.append(
+ action('✎ Sửa',()=>editTask(t)),
+ action(t.done?'↶ Mở lại':'✓ Xong',()=>updateStatus(t)),
+ action('✕ Xóa',()=>removeTask(t),'danger')
+);return w}
+function filtered(){
+ const q=$('search').value.trim().toLowerCase(),f=$('filter').value,p=$('priorityFilter').value;
+ return tasks.filter(t=>{
+  const text=(t.name+' '+String(t.note||'')+' '+String(t.owner||'')).toLowerCase();
+  return text.includes(q)&&(f==='all'||f==='open'&&!t.done||f==='done'&&t.done||f==='late'&&late(t))&&(p==='all'||(t.priority||'Trung bình')===p);
+ }).sort((a,b)=>dueTime(a)-dueTime(b));
+}
+function addTable(list){
+ const body=$('rows');body.replaceChildren();
+ for(const t of list){
+  const tr=document.createElement('tr'),first=document.createElement('td');
+  const name=document.createElement('div');name.className='task-title';name.textContent=t.name;first.append(name);
+  if(t.note){const note=document.createElement('div');note.className='task-note';note.textContent=t.note;first.append(note)}tr.append(first);
+  cell(tr,dateLabel(t.due));
+  const p=document.createElement('td');p.append(chip(t.priority||'Trung bình',t.priority==='Cao'?'high':''));tr.append(p);
+  cell(tr,t.owner||'—');
+  const s=document.createElement('td');s.append(chip(t.done?'Hoàn thành':late(t)?'Quá hạn':'Chưa hoàn thành',t.done?'done':late(t)?'late':''));tr.append(s);
+  const a=document.createElement('td');a.append(actionsFor(t));tr.append(a);body.append(tr);
+ }
+}
+function addBoard(list){
+ const board=$('boardPanel');board.replaceChildren();
+ for(const lane of [{title:'Cần thực hiện',test:t=>!t.done&&!late(t)},{title:'Quá hạn',test:t=>late(t)},{title:'Hoàn thành',test:t=>t.done}]){
+  const col=document.createElement('div');col.className='lane';
+  const h=document.createElement('h3');h.textContent=lane.title+' · '+list.filter(lane.test).length;col.append(h);
+  list.filter(lane.test).forEach(t=>{
+   const card=document.createElement('div');card.className='task';
+   const title=document.createElement('strong');title.textContent=t.name;card.append(title);
+   const details=document.createElement('p');details.textContent='📅 '+dateLabel(t.due)+' · '+(t.owner||'Chưa phân công');
+   card.append(details,chip(t.priority||'Trung bình',t.priority==='Cao'?'high':''),actionsFor(t));col.append(card);
+  });board.append(col);
+ }
+}
+function render(){
+ $('total').textContent=tasks.length;$('open').textContent=tasks.filter(t=>!t.done).length;$('done').textContent=tasks.filter(t=>t.done).length;$('late').textContent=tasks.filter(late).length;
+ const list=filtered();$('empty').hidden=list.length!==0;$('tablePanel').hidden=view!=='table';$('boardPanel').hidden=view!=='board';addTable(list);addBoard(list);
+}
+async function reload(){const data=await request('zrApiListTasks');tasks=Array.isArray(data)?data:[];render()}
+function resetEditor(){editing=null;$('taskForm').reset();$('saveBtn').textContent='＋ Lưu công việc';$('cancelEdit').hidden=true}
+function localInput(d){const date=new Date(d);if(!Number.isFinite(date.getTime()))return '';const z=n=>String(n).padStart(2,'0');return date.getFullYear()+'-'+z(date.getMonth()+1)+'-'+z(date.getDate())+'T'+z(date.getHours())+':'+z(date.getMinutes())}
+function editTask(t){editing=t.id;$('name').value=t.name;$('due').value=localInput(t.due);$('priority').value=t.priority||'Trung bình';$('owner').value=t.owner||'';$('note').value=t.note||'';$('saveBtn').textContent='✓ Lưu thay đổi';$('cancelEdit').hidden=false;$('create').scrollIntoView({behavior:'smooth'})}
+$('cancelEdit').onclick=resetEditor;
+$('taskForm').addEventListener('submit',async e=>{
+ e.preventDefault();if(busy)return;
+ const name=$('name').value.trim(),due=$('due').value;
+ if(!name||!due||!Number.isFinite(new Date(due).getTime()))return alert('Hãy nhập tên công việc và thời hạn hợp lệ');
+ const item={id:editing||'',name,due:new Date(due).toISOString(),priority:$('priority').value,owner:$('owner').value.trim(),note:$('note').value.trim()};
+ setBusy(true);
+ try{await request('zrApiSaveTask',item);resetEditor();await reload();$('tasks').scrollIntoView({behavior:'smooth'})}catch(err){error(err)}finally{setBusy(false)}
+});
+for(const id of ['search','filter','priorityFilter'])$(id).addEventListener(id==='search'?'input':'change',render);
+$('tableView').onclick=()=>{view='table';$('tableView').classList.add('active');$('boardView').classList.remove('active');render()};
+$('boardView').onclick=()=>{view='board';$('boardView').classList.add('active');$('tableView').classList.remove('active');render()};
+function download(name,data,type){const blob=new Blob([data],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000)}
+function csvField(v){return '"'+String(v??'').replaceAll('"','""')+'"'}
+$('csv').onclick=()=>{const rows=[['ID','Công việc','Hạn hoàn thành','Trạng thái','Người phụ trách','Mức ưu tiên','Ghi chú','Ngày tạo','Ngày hoàn thành']];tasks.forEach(t=>rows.push([t.id,t.name,dateLabel(t.due),t.done?'Hoàn thành':'Chưa thực hiện',t.owner||'',t.priority||'Trung bình',t.note||'','','']));download('cong-viec-sheets.csv','\ufeff'+rows.map(r=>r.map(csvField).join(',')).join('\r\n'),'text/csv;charset=utf-8')};
+$('json').onclick=()=>download('sao-luu-cong-viec-sheets.json',JSON.stringify(tasks,null,2),'application/json');
+$('fileInput').onchange=async e=>{
+ const file=e.target.files&&e.target.files[0];if(!file)return;
+ try{
+  if(file.size>2e6)throw Error('Tệp quá lớn');
+  const data=JSON.parse(await file.text());
+  if(!Array.isArray(data)||data.length<1||data.length>100||!data.every(t=>t&&typeof t.name==='string'&&t.name&&typeof t.due==='string'))throw Error('Tệp JSON phải có từ 1 đến 100 công việc hợp lệ');
+  if(!confirm('Nhập '+data.length+' công việc MỚI vào Google Sheets? Việc nhập không ghi đè và có thể tạo công việc trùng.'))return;
+  setBusy(true);
+  const result=await request('zrApiImportTasks',data);
+  alert('Đã nhập '+result.count+' công việc vào Google Sheets.');
+  await reload();
+ }catch(err){error(err)}finally{setBusy(false);e.target.value=''}
+};
+$('empty').textContent='Đang tải công việc từ Google Sheets…';
+setBusy(true);reload().catch(error).finally(()=>setBusy(false));
+</script>
+</body>
+</html>
